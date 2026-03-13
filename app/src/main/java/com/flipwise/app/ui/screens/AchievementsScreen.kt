@@ -1,0 +1,322 @@
+package com.flipwise.app.ui.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.flipwise.app.data.model.Achievement
+import com.flipwise.app.viewmodel.DeckViewModel
+
+@Composable
+fun AchievementsScreen(
+    onBack: () -> Unit,
+    viewModel: DeckViewModel = viewModel()
+) {
+    val achievements by viewModel.achievements.collectAsState(initial = emptyList())
+    val progress by viewModel.userProgress.collectAsState()
+    val unlockedCount = achievements.count { it.isUnlocked }
+    
+    val categories = listOf("All", "Streaks", "Cards", "Mastery", "Points")
+    var selectedCategory by remember { mutableStateOf("All") }
+    var selectedAchievement by remember { mutableStateOf<Achievement?>(null) }
+
+    val filteredAchievements = remember(selectedCategory, achievements) {
+        if (selectedCategory == "All") achievements
+        else achievements.filter { it.category.equals(selectedCategory, ignoreCase = true) }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+    ) {
+        // --- Header with Gradient ---
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color(0xFFFBBF24), Color(0xFFF97316))
+                    ),
+                    shape = RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)
+                )
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                IconButton(onClick = onBack, modifier = Modifier.offset(x = (-12).dp)) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                }
+                Text(
+                    text = "Achievements",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                
+                Spacer(Modifier.height(32.dp))
+                
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Unlocked", fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f))
+                        Text("$unlockedCount/${achievements.size}", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Spacer(Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            progress = { if (achievements.isNotEmpty()) unlockedCount.toFloat() / achievements.size else 0f },
+                            modifier = Modifier.fillMaxWidth(0.8f).height(6.dp).clip(CircleShape),
+                            color = Color.White,
+                            trackColor = Color.White.copy(alpha = 0.3f)
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                        Text("Total Points", fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f))
+                        Text(progress.totalPoints.toString(), fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                }
+            }
+        }
+
+        // --- Categories ---
+        ScrollableTabRow(
+            selectedTabIndex = categories.indexOf(selectedCategory),
+            containerColor = Color.Transparent,
+            contentColor = Color(0xFF7C3AED),
+            edgePadding = 16.dp,
+            divider = {},
+            indicator = {}
+        ) {
+            categories.forEach { category ->
+                val isSelected = selectedCategory == category
+                Tab(
+                    selected = isSelected,
+                    onClick = { selectedCategory = category },
+                    modifier = Modifier.padding(vertical = 16.dp, horizontal = 4.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = if (isSelected) Color(0xFFF97316) else Color(0xFFF3F4F6),
+                        modifier = Modifier.height(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 20.dp)) {
+                            Text(
+                                text = category,
+                                color = if (isSelected) Color.White else Color.Gray,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- Achievements Grid ---
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            contentPadding = PaddingValues(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.weight(1f)
+        ) {
+            items(filteredAchievements) { achievement ->
+                AchievementGridItem(achievement) {
+                    selectedAchievement = achievement
+                }
+            }
+        }
+    }
+
+    if (selectedAchievement != null) {
+        AchievementDetailDialog(
+            achievement = selectedAchievement!!,
+            onDismiss = { selectedAchievement = null }
+        )
+    }
+}
+
+@Composable
+fun AchievementGridItem(achievement: Achievement, onClick: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = Color(0xFFF0E6FF),
+        modifier = Modifier.height(180.dp).clickable { onClick() }
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Surface(
+                modifier = Modifier.size(64.dp),
+                shape = CircleShape,
+                color = if (achievement.isUnlocked) Color.White else Color.LightGray.copy(alpha = 0.5f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    if (achievement.isUnlocked) {
+                        Text(achievement.icon, fontSize = 32.sp)
+                    } else {
+                        Icon(Icons.Default.Lock, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(24.dp))
+                    }
+                }
+            }
+            
+            Spacer(Modifier.height(16.dp))
+            
+            Text(
+                text = if (achievement.isUnlocked) achievement.title else "???",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1E1B4B)
+            )
+            
+            Spacer(Modifier.height(4.dp))
+            
+            Text(
+                text = if (achievement.isUnlocked) achievement.description else "Keep studying to unlock!",
+                fontSize = 12.sp,
+                color = Color.Gray,
+                textAlign = TextAlign.Center,
+                lineHeight = 16.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun AchievementDetailDialog(achievement: Achievement, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = Color.White,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+        ) {
+            Box(modifier = Modifier.padding(24.dp)) {
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.TopEnd).offset(x = 12.dp, y = (-12).dp)
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.Gray)
+                }
+                
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Surface(
+                        modifier = Modifier.size(100.dp),
+                        shape = CircleShape,
+                        color = Color.LightGray.copy(alpha = 0.3f)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            if (achievement.isUnlocked) {
+                                Text(achievement.icon, fontSize = 48.sp)
+                            } else {
+                                Icon(Icons.Default.Lock, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(40.dp))
+                            }
+                        }
+                    }
+                    
+                    Spacer(Modifier.height(24.dp))
+                    
+                    Text(
+                        text = if (achievement.isUnlocked) achievement.title else "Locked Achievement",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1E1B4B)
+                    )
+                    
+                    Spacer(Modifier.height(8.dp))
+                    
+                    Text(
+                        text = if (achievement.isUnlocked) achievement.description else "This achievement is still locked. Keep studying to unlock it!",
+                        fontSize = 14.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center
+                    )
+                    
+                    Spacer(Modifier.height(32.dp))
+                    
+                    // Hint Card
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color(0xFFF9F9FB)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("Hint", fontSize = 12.sp, color = Color.Gray)
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = getAchievementHint(achievement),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1E1B4B),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                    
+                    Spacer(Modifier.height(24.dp))
+                    
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (achievement.isUnlocked) Color(0xFF7C3AED) else Color(0xFFFFF0E6)
+                        )
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (!achievement.isUnlocked) {
+                                Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFFF97316), modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            Text(
+                                text = if (achievement.isUnlocked) "Awesome!" else "Keep Studying to Unlock",
+                                color = if (achievement.isUnlocked) Color.White else Color(0xFFF97316),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun getAchievementHint(achievement: Achievement): String {
+    return when (achievement.id) {
+        "first_steps"  -> "Study your first 5 cards"
+        "centurion"    -> "Study a total of 100 cards"
+        "scholar"      -> "Study a total of 500 cards"
+        "week_warrior" -> "Maintain a 7-day study streak"
+        "month_master" -> "Maintain a 30-day study streak"
+        "speed_demon"  -> "Complete 20 cards in one session"
+        "early_bird"   -> "Study before 8:00 AM"
+        "night_owl"    -> "Study after 10:00 PM"
+        "deck_builder" -> "Create 5 different decks"
+        "perfectionist"-> "Get 100% accuracy in a session"
+        else -> "Keep learning to discover this!"
+    }
+}
