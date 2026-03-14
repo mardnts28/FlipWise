@@ -8,6 +8,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
@@ -166,48 +168,56 @@ fun StudyModeScreen(
 
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = Color.White.copy(alpha = 0.15f)
+                shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+                color = Color.White
             ) {
                 if (!isFlipped) {
                     Box(
-                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        modifier = Modifier.fillMaxWidth().padding(48.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("Tap the card to reveal the answer", color = Color.White, fontSize = 14.sp)
+                        Text("Tap the card to reveal the answer", color = Color.Gray, fontSize = 16.sp)
                     }
                 } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        StudyRatingButton("Forgot", Color(0xFFF43F5E), Modifier.weight(1f)) {
-                            forgotCount++
-                            totalPoints += 1
-                            if (currentIndex + 1 < studyCards!!.size) {
-                                currentIndex++
-                                isFlipped = false
-                            } else {
-                                isFinished = true
+                        Text("How well did you know this?", color = Color.Gray, fontSize = 15.sp)
+                        Spacer(Modifier.height(20.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            StudyRatingButton("😟", "Forgot", Color(0xFFF43F5E), Modifier.weight(1f)) {
+                                forgotCount++
+                                totalPoints += 1
+                                if (currentIndex + 1 < studyCards!!.size) {
+                                    currentIndex++
+                                    isFlipped = false
+                                } else {
+                                    isFinished = true
+                                }
                             }
-                        }
-                        StudyRatingButton("Hard", Color(0xFFFBBF24), Modifier.weight(1f)) {
-                            hardCount++
-                            totalPoints += 5
-                            if (currentIndex + 1 < studyCards!!.size) {
-                                currentIndex++
-                                isFlipped = false
-                            } else {
-                                isFinished = true
+                            StudyRatingButton("🧐", "Hard", Color(0xFFF97316), Modifier.weight(1f)) {
+                                hardCount++
+                                totalPoints += 5
+                                if (currentIndex + 1 < studyCards!!.size) {
+                                    currentIndex++
+                                    isFlipped = false
+                                } else {
+                                    isFinished = true
+                                }
                             }
-                        }
-                        StudyRatingButton("Easy", Color(0xFF10B981), Modifier.weight(1f)) {
-                            easyCount++
-                            totalPoints += 10
-                            if (currentIndex + 1 < studyCards!!.size) {
-                                currentIndex++
-                                isFlipped = false
-                            } else {
-                                isFinished = true
+                            StudyRatingButton("😊", "Easy", Color(0xFF10B981), Modifier.weight(1f)) {
+                                easyCount++
+                                totalPoints += 10
+                                if (currentIndex + 1 < studyCards!!.size) {
+                                    currentIndex++
+                                    isFlipped = false
+                                } else {
+                                    isFinished = true
+                                }
                             }
                         }
                     }
@@ -218,26 +228,31 @@ fun StudyModeScreen(
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             if (dbCards.isEmpty()) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("No cards in this deck", color = NavyInk)
+                    Text("No cards in this deck", color = Color(0xFF1E1B4B))
                     Spacer(Modifier.height(16.dp))
                     Button(onClick = onBack) { Text("Go Back") }
                 }
             } else {
-                CircularProgressIndicator(color = GrapePop)
+                CircularProgressIndicator(color = Color(0xFF7C3AED))
             }
         }
     }
 }
 
 @Composable
-fun StudyRatingButton(label: String, color: Color, modifier: Modifier, onClick: () -> Unit) {
+fun StudyRatingButton(emoji: String, label: String, color: Color, modifier: Modifier, onClick: () -> Unit) {
     Button(
         onClick = onClick,
-        modifier = modifier.height(56.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = color)
+        modifier = modifier.height(100.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = color),
+        contentPadding = PaddingValues(0.dp)
     ) {
-        Text(label, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(emoji, fontSize = 28.sp)
+            Spacer(Modifier.height(4.dp))
+            Text(label, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+        }
     }
 }
 
@@ -254,32 +269,30 @@ fun StudySummaryContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color(0xFF7C3AED), Color(0xFFC4B5FD))
-                )
-            )
+            .background(Color(0xFF8B5CF6))
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(24.dp))
         
         Surface(
-            modifier = Modifier.size(100.dp),
+            modifier = Modifier.size(120.dp),
             shape = CircleShape,
             color = Color(0xFFFBBF24)
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.EmojiEvents, contentDescription = null, tint = Color.White, modifier = Modifier.size(56.dp))
+                Icon(Icons.Default.EmojiEvents, contentDescription = null, tint = Color.White, modifier = Modifier.size(64.dp))
             }
         }
         
         Spacer(Modifier.height(24.dp))
-        Text("Great Job!", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text("Great Job!", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White)
         Text("You completed the study session", fontSize = 16.sp, color = Color.White.copy(alpha = 0.8f))
         
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(32.dp))
 
+        // Cards Studied Card
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
@@ -305,7 +318,7 @@ fun StudySummaryContent(
                 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
                     SummaryItem("$easyCount", "Easy", Color(0xFF10B981))
-                    SummaryItem("$hardCount", "Hard", Color(0xFFFBBF24))
+                    SummaryItem("$hardCount", "Hard", Color(0xFFF97316))
                     SummaryItem("$forgotCount", "Forgot", Color(0xFFF43F5E))
                 }
             }
@@ -313,6 +326,7 @@ fun StudySummaryContent(
 
         Spacer(Modifier.height(16.dp))
 
+        // Points Card
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
@@ -334,6 +348,7 @@ fun StudySummaryContent(
 
         Spacer(Modifier.height(16.dp))
 
+        // Accuracy Card
         val accuracy = if (cardsStudied > 0) (easyCount * 100 / cardsStudied) else 0
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -361,8 +376,9 @@ fun StudySummaryContent(
             }
         }
 
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(24.dp))
 
+        // Buttons
         Button(
             onClick = onStudyAgain,
             modifier = Modifier.fillMaxWidth().height(64.dp),
@@ -374,15 +390,17 @@ fun StudySummaryContent(
         
         Spacer(Modifier.height(12.dp))
         
-        OutlinedButton(
+        Button(
             onClick = onBackToHome,
             modifier = Modifier.fillMaxWidth().height(64.dp),
             shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(2.dp, Color.White),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.White,
+                contentColor = Color(0xFF7C3AED)
+            )
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Home, contentDescription = null)
+                Icon(Icons.Default.Home, contentDescription = null, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Back to Home", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
