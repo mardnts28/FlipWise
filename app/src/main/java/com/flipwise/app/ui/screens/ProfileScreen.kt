@@ -1,5 +1,6 @@
 package com.flipwise.app.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,9 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.flipwise.app.ui.theme.*
 import com.flipwise.app.viewmodel.ProfileViewModel
 
 @Composable
@@ -35,6 +34,7 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = view
     var selectedTab by remember { mutableIntStateOf(0) }
     var showCreateChallenge by remember { mutableStateOf(false) }
     var showAddFriend by remember { mutableStateOf(false) }
+    var showEditProfile by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -55,7 +55,7 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = view
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
-                    IconButton(onClick = { }) {
+                    IconButton(onClick = { showEditProfile = true }) {
                         Icon(Icons.Default.EditNote, contentDescription = "Edit", tint = Color.White)
                     }
                 }
@@ -67,7 +67,7 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = view
                     color = Color.White.copy(alpha = 0.2f)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(80.dp), tint = Color(0xFF1E1B4B).copy(alpha = 0.5f))
+                        Text(profile.avatar, fontSize = 64.sp)
                     }
                 }
                 
@@ -144,7 +144,7 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = view
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("My Friends (0)", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+                    Text("My Friends (${friends.size})", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
                     Button(
                         onClick = { showAddFriend = true },
                         shape = RoundedCornerShape(12.dp),
@@ -192,12 +192,179 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = view
         }
     }
 
+    if (showEditProfile) {
+        EditProfileDialog(
+            profile = profile,
+            onDismiss = { showEditProfile = false },
+            onSave = { updatedProfile ->
+                viewModel.updateProfile(
+                    updatedProfile.displayName,
+                    updatedProfile.username,
+                    updatedProfile.bio,
+                    updatedProfile.avatar
+                )
+                showEditProfile = false
+            }
+        )
+    }
+
     if (showCreateChallenge) {
         CreateChallengeDialog(onDismiss = { showCreateChallenge = false })
     }
     
     if (showAddFriend) {
         AddFriendStyledDialog(onDismiss = { showAddFriend = false })
+    }
+}
+
+@Composable
+fun EditProfileDialog(
+    profile: com.flipwise.app.data.model.UserProfile,
+    onDismiss: () -> Unit,
+    onSave: (com.flipwise.app.data.model.UserProfile) -> Unit
+) {
+    var displayName by remember { mutableStateOf(profile.displayName) }
+    var username by remember { mutableStateOf(profile.username) }
+    var bio by remember { mutableStateOf(profile.bio) }
+    var selectedAvatar by remember { mutableStateOf(profile.avatar) }
+
+    val avatars = listOf("👤", "😎", "😜", "🎓", "📚", "🧠", "💡", "🚀", "⭐", "✨", "🔥", "💪")
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = Color.White,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Edit Profile", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.Gray)
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                Text("Avatar", fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B), fontSize = 16.sp)
+                Spacer(Modifier.height(12.dp))
+                
+                // Avatar Selection Grid
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        avatars.take(6).forEach { avatar ->
+                            AvatarOptionItem(avatar, selectedAvatar == avatar) { selectedAvatar = avatar }
+                        }
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        avatars.drop(6).forEach { avatar ->
+                            AvatarOptionItem(avatar, selectedAvatar == avatar) { selectedAvatar = avatar }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                ProfileEditField(label = "Display Name", value = displayName, onValueChange = { displayName = it })
+                Spacer(Modifier.height(16.dp))
+                ProfileEditField(label = "Username", value = username, onValueChange = { username = it })
+                Spacer(Modifier.height(16.dp))
+                
+                Text("Bio", fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B), fontSize = 16.sp)
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = bio,
+                    onValueChange = { bio = it },
+                    modifier = Modifier.fillMaxWidth().height(100.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF7C3AED),
+                        unfocusedBorderColor = Color(0xFFE5E7EB),
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    )
+                )
+
+                Spacer(Modifier.height(32.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, Color(0xFFE5E7EB))
+                    ) {
+                        Text("Cancel", color = Color(0xFF1E1B4B), fontWeight = FontWeight.Bold)
+                    }
+                    Button(
+                        onClick = { 
+                            onSave(profile.copy(
+                                displayName = displayName, 
+                                username = username, 
+                                bio = bio, 
+                                avatar = selectedAvatar
+                            )) 
+                        },
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
+                    ) {
+                        Text("Save Changes", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AvatarOptionItem(avatar: String, isSelected: Boolean, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .size(44.dp)
+            .clickable { onClick() }
+            .then(
+                if (isSelected) Modifier.border(2.dp, Color(0xFF7C3AED), CircleShape)
+                else Modifier
+            ),
+        shape = CircleShape,
+        color = if (isSelected) Color(0xFF7C3AED).copy(alpha = 0.1f) else Color(0xFFF3F4F6)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(avatar, fontSize = 24.sp)
+        }
+    }
+}
+
+@Composable
+fun ProfileEditField(label: String, value: String, onValueChange: (String) -> Unit) {
+    Column {
+        Text(label, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B), fontSize = 16.sp)
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFF7C3AED),
+                unfocusedBorderColor = Color(0xFFE5E7EB),
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White
+            ),
+            singleLine = true
+        )
     }
 }
 
