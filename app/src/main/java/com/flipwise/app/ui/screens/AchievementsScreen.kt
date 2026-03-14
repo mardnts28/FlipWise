@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,6 +28,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flipwise.app.data.model.Achievement
 import com.flipwise.app.viewmodel.DeckViewModel
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
 fun AchievementsScreen(
@@ -222,13 +225,14 @@ fun AchievementDetailDialog(achievement: Achievement, onDismiss: () -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Surface(
-                        modifier = Modifier.size(100.dp),
+                        modifier = Modifier.size(120.dp),
                         shape = CircleShape,
-                        color = Color.LightGray.copy(alpha = 0.3f)
+                        color = Color(0xFF7C3AED).copy(alpha = 0.1f)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             if (achievement.isUnlocked) {
-                                Text(achievement.icon, fontSize = 48.sp)
+                                // Simple emoji as requested, but with a background circle like in the image
+                                Text(achievement.icon, fontSize = 56.sp)
                             } else {
                                 Icon(Icons.Default.Lock, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(40.dp))
                             }
@@ -239,7 +243,7 @@ fun AchievementDetailDialog(achievement: Achievement, onDismiss: () -> Unit) {
                     
                     Text(
                         text = if (achievement.isUnlocked) achievement.title else "Locked Achievement",
-                        fontSize = 22.sp,
+                        fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1E1B4B)
                     )
@@ -247,56 +251,112 @@ fun AchievementDetailDialog(achievement: Achievement, onDismiss: () -> Unit) {
                     Spacer(Modifier.height(8.dp))
                     
                     Text(
-                        text = if (achievement.isUnlocked) achievement.description else "This achievement is still locked. Keep studying to unlock it!",
-                        fontSize = 14.sp,
+                        text = if (achievement.isUnlocked) achievement.description else "Keep studying to unlock this achievement!",
+                        fontSize = 15.sp,
                         color = Color.Gray,
                         textAlign = TextAlign.Center
                     )
                     
-                    Spacer(Modifier.height(32.dp))
-                    
-                    // Hint Card
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color(0xFFF9F9FB)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text("Hint", fontSize = 12.sp, color = Color.Gray)
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                text = getAchievementHint(achievement),
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1E1B4B),
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                    
                     Spacer(Modifier.height(24.dp))
                     
-                    Button(
-                        onClick = onDismiss,
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (achievement.isUnlocked) Color(0xFF7C3AED) else Color(0xFFFFF0E6)
-                        )
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (!achievement.isUnlocked) {
+                    if (achievement.isUnlocked && achievement.unlockedAt != null) {
+                        // Unlocked Date Card
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(20.dp),
+                            color = Color(0xFFF9F9FB)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("Unlocked on", fontSize = 12.sp, color = Color.Gray)
+                                Spacer(Modifier.height(4.dp))
+                                val sdf = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault())
+                                val stf = SimpleDateFormat("h:mm a", Locale.getDefault())
+                                val date = Date(achievement.unlockedAt)
+                                Text(
+                                    text = sdf.format(date),
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1E1B4B)
+                                )
+                                Text(
+                                    text = stf.format(date),
+                                    fontSize = 14.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+                        
+                        Spacer(Modifier.height(24.dp))
+                        
+                        // Achievement Completed Badge
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFECFDF5)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.EmojiEvents,
+                                    contentDescription = null,
+                                    tint = Color(0xFF10B981),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "Achievement Completed",
+                                    color = Color(0xFF10B981),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    } else {
+                        // Hint Card for locked achievements
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color(0xFFF9F9FB)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("Hint", fontSize = 12.sp, color = Color.Gray)
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    text = getAchievementHint(achievement),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1E1B4B),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                        
+                        Spacer(Modifier.height(24.dp))
+                        
+                        Button(
+                            onClick = onDismiss,
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFF0E6))
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFFF97316), modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "Keep Studying to Unlock",
+                                    color = Color(0xFFF97316),
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
-                            Text(
-                                text = if (achievement.isUnlocked) "Awesome!" else "Keep Studying to Unlock",
-                                color = if (achievement.isUnlocked) Color.White else Color(0xFFF97316),
-                                fontWeight = FontWeight.Bold
-                            )
                         }
                     }
                 }
