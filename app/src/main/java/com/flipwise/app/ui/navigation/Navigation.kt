@@ -15,6 +15,8 @@ sealed class Screen(val route: String) {
     object StudyTracker : Screen("tracker")
     object Settings     : Screen("settings")
     object Profile      : Screen("profile")
+    object Login        : Screen("login")
+    object Register     : Screen("register")
     object DeckDetail   : Screen("deck/{deckId}") {
         fun createRoute(deckId: String) = "deck/$deckId"
     }
@@ -32,10 +34,32 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
     ) {
         composable(Screen.Splash.route) {
             SplashScreen(onNavigateNext = {
-                navController.navigate(Screen.Home.route) {
+                navController.navigate(Screen.Login.route) {
                     popUpTo(Screen.Splash.route) { inclusive = true }
                 }
             })
+        }
+
+        composable(Screen.Login.route) {
+            LoginScreen(
+                onNavigateToRegister = { navController.navigate(Screen.Register.route) },
+                onLoginSuccess = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Screen.Register.route) {
+            RegisterScreen(
+                onNavigateToLogin = { navController.navigate(Screen.Login.route) },
+                onRegisterSuccess = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Register.route) { inclusive = true }
+                    }
+                }
+            )
         }
 
         composable(Screen.Onboarding.route) {
@@ -57,7 +81,8 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                         navController.navigate(Screen.DeckList.route)
                     }
                 },
-                onNavigateToDecks = { navController.navigate(Screen.DeckList.route) }
+                onNavigateToDecks = { navController.navigate(Screen.DeckList.route) },
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
             )
         }
 
@@ -101,7 +126,15 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
         }
 
         composable(Screen.Settings.route) {
-            SettingsScreen(onBack = { navController.popBackStack() })
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
+                onLogout = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
         }
 
         composable(Screen.Profile.route) {

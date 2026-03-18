@@ -30,6 +30,7 @@ fun HomeScreen(
     onNavigateToDeck: (String) -> Unit,
     onNavigateToStudy: (String?) -> Unit,
     onNavigateToDecks: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     viewModel: DeckViewModel = viewModel()
 ) {
     val decks by viewModel.decks.collectAsState(initial = emptyList())
@@ -65,7 +66,7 @@ fun HomeScreen(
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
-                    IconButton(onClick = { }) {
+                    IconButton(onClick = onNavigateToSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color.White)
                     }
                 }

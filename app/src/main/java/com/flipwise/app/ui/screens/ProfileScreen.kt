@@ -40,6 +40,7 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = view
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFFBFBFF))
+            .verticalScroll(rememberScrollState())
     ) {
         // --- Header ---
         Surface(

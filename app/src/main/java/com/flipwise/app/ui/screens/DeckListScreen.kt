@@ -22,6 +22,7 @@ import com.flipwise.app.data.model.Deck
 import com.flipwise.app.ui.components.CreateDeckDialog
 import com.flipwise.app.ui.theme.*
 import com.flipwise.app.viewmodel.DeckViewModel
+import androidx.core.graphics.toColorInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,7 +89,7 @@ fun DeckListScreen(
     if (showCreateDialog) {
         CreateDeckDialog(
             onDismiss = { showCreateDialog = false },
-            onCreate = { name, color, icon ->
+            onCreate = { name: String, color: String, icon: String ->
                 viewModel.createDeck(name, color, icon)
                 showCreateDialog = false
             }
@@ -109,7 +110,10 @@ fun DeckDetailItem(deck: Deck, onClick: () -> Unit, onDelete: () -> Unit) {
                 Box(
                     modifier = Modifier
                         .size(64.dp)
-                        .background(Color(android.graphics.Color.parseColor(deck.color)), RoundedCornerShape(16.dp)),
+                        .background(
+                            color = try { Color(deck.color.toColorInt()) } catch (e: Exception) { Color(0xFF7C3AED) },
+                            shape = RoundedCornerShape(16.dp)
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(deck.icon, fontSize = 32.sp)

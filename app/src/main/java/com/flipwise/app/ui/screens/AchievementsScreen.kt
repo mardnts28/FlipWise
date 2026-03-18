@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
@@ -54,95 +55,101 @@ fun AchievementsScreen(
             .fillMaxSize()
             .background(Color.White)
     ) {
-        // --- Header with Gradient ---
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(220.dp)
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color(0xFFFBBF24), Color(0xFFF97316))
-                    ),
-                    shape = RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)
-                )
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            contentPadding = PaddingValues(bottom = 32.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxSize()
         ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                IconButton(onClick = onBack, modifier = Modifier.offset(x = (-12).dp)) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
-                }
-                Text(
-                    text = "Achievements",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                
-                Spacer(Modifier.height(32.dp))
-                
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Unlocked", fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f))
-                        Text("$unlockedCount/${achievements.size}", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        Spacer(Modifier.height(8.dp))
-                        LinearProgressIndicator(
-                            progress = { if (achievements.isNotEmpty()) unlockedCount.toFloat() / achievements.size else 0f },
-                            modifier = Modifier.fillMaxWidth(0.8f).height(6.dp).clip(CircleShape),
-                            color = Color.White,
-                            trackColor = Color.White.copy(alpha = 0.3f)
+            // Header
+            item(span = { GridItemSpan(2) }) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(Color(0xFFFBBF24), Color(0xFFF97316))
+                            ),
+                            shape = RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)
                         )
-                    }
-                    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                        Text("Total Points", fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f))
-                        Text(progress.totalPoints.toString(), fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    }
-                }
-            }
-        }
-
-        // --- Categories ---
-        ScrollableTabRow(
-            selectedTabIndex = categories.indexOf(selectedCategory),
-            containerColor = Color.Transparent,
-            contentColor = Color(0xFF7C3AED),
-            edgePadding = 16.dp,
-            divider = {},
-            indicator = {}
-        ) {
-            categories.forEach { category ->
-                val isSelected = selectedCategory == category
-                Tab(
-                    selected = isSelected,
-                    onClick = { selectedCategory = category },
-                    modifier = Modifier.padding(vertical = 16.dp, horizontal = 4.dp)
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = if (isSelected) Color(0xFFF97316) else Color(0xFFF3F4F6),
-                        modifier = Modifier.height(40.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 20.dp)) {
-                            Text(
-                                text = category,
-                                color = if (isSelected) Color.White else Color.Gray,
-                                fontWeight = FontWeight.Medium
-                            )
+                    Column(modifier = Modifier.padding(24.dp)) {
+                        IconButton(onClick = onBack, modifier = Modifier.offset(x = (-12).dp)) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        }
+                        Text(
+                            text = "Achievements",
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        
+                        Spacer(Modifier.height(32.dp))
+                        
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Unlocked", fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f))
+                                Text("$unlockedCount/${achievements.size}", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Spacer(Modifier.height(8.dp))
+                                LinearProgressIndicator(
+                                    progress = { if (achievements.isNotEmpty()) unlockedCount.toFloat() / achievements.size else 0f },
+                                    modifier = Modifier.fillMaxWidth(0.8f).height(6.dp).clip(CircleShape),
+                                    color = Color.White,
+                                    trackColor = Color.White.copy(alpha = 0.3f)
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                                Text("Total Points", fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f))
+                                Text(progress.totalPoints.toString(), fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
                         }
                     }
                 }
             }
-        }
 
-        // --- Achievements Grid ---
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.weight(1f)
-        ) {
+            // Categories
+            item(span = { GridItemSpan(2) }) {
+                ScrollableTabRow(
+                    selectedTabIndex = categories.indexOf(selectedCategory),
+                    containerColor = Color.Transparent,
+                    contentColor = Color(0xFF7C3AED),
+                    edgePadding = 16.dp,
+                    divider = {},
+                    indicator = {}
+                ) {
+                    categories.forEach { category ->
+                        val isSelected = selectedCategory == category
+                        Tab(
+                            selected = isSelected,
+                            onClick = { selectedCategory = category },
+                            modifier = Modifier.padding(vertical = 16.dp, horizontal = 4.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (isSelected) Color(0xFFF97316) else Color(0xFFF3F4F6),
+                                modifier = Modifier.height(40.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 20.dp)) {
+                                    Text(
+                                        text = category,
+                                        color = if (isSelected) Color.White else Color.Gray,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Grid items
             items(filteredAchievements) { achievement ->
-                AchievementGridItem(achievement) {
-                    selectedAchievement = achievement
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    AchievementGridItem(achievement) {
+                        selectedAchievement = achievement
+                    }
                 }
             }
         }

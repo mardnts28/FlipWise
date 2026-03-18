@@ -3,7 +3,9 @@ package com.flipwise.app.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
@@ -59,10 +61,14 @@ fun OnboardingScreen(onComplete: () -> Unit) {
         )
 
         Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 32.dp)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            Spacer(Modifier.height(80.dp)) // Offset for the skip button
             val slide = slides[currentSlide]
             
             Surface(
@@ -99,6 +105,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                 textAlign = TextAlign.Center,
                 lineHeight = 24.sp
             )
+            Spacer(Modifier.height(160.dp)) // Space for footer
         }
 
         Column(
