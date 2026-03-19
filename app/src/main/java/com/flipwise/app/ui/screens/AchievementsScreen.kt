@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -67,7 +67,7 @@ fun AchievementsScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(220.dp)
+                        .height(240.dp)
                         .background(
                             brush = Brush.verticalGradient(
                                 colors = listOf(Color(0xFFFBBF24), Color(0xFFF97316))
@@ -81,7 +81,7 @@ fun AchievementsScreen(
                         }
                         Text(
                             text = "Achievements",
-                            fontSize = 28.sp,
+                            fontSize = 32.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
@@ -91,18 +91,18 @@ fun AchievementsScreen(
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text("Unlocked", fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f))
-                                Text("$unlockedCount/${achievements.size}", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text("$unlockedCount/${achievements.size}", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                 Spacer(Modifier.height(8.dp))
                                 LinearProgressIndicator(
                                     progress = { if (achievements.isNotEmpty()) unlockedCount.toFloat() / achievements.size else 0f },
-                                    modifier = Modifier.fillMaxWidth(0.8f).height(6.dp).clip(CircleShape),
+                                    modifier = Modifier.fillMaxWidth(0.8f).height(8.dp).clip(CircleShape),
                                     color = Color.White,
                                     trackColor = Color.White.copy(alpha = 0.3f)
                                 )
                             }
                             Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                                 Text("Total Points", fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f))
-                                Text(progress.totalPoints.toString(), fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text(progress.totalPoints.toString(), fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         }
                     }
@@ -114,8 +114,8 @@ fun AchievementsScreen(
                 ScrollableTabRow(
                     selectedTabIndex = categories.indexOf(selectedCategory),
                     containerColor = Color.Transparent,
-                    contentColor = Color(0xFF7C3AED),
-                    edgePadding = 16.dp,
+                    contentColor = Color(0xFFF97316),
+                    edgePadding = 24.dp,
                     divider = {},
                     indicator = {}
                 ) {
@@ -145,8 +145,10 @@ fun AchievementsScreen(
             }
 
             // Grid items
-            items(filteredAchievements) { achievement ->
-                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+            itemsIndexed(filteredAchievements) { index, achievement ->
+                val paddingStart = if (index % 2 == 0) 24.dp else 0.dp
+                val paddingEnd = if (index % 2 != 0) 24.dp else 0.dp
+                Box(modifier = Modifier.padding(start = paddingStart, end = paddingEnd)) {
                     AchievementGridItem(achievement) {
                         selectedAchievement = achievement
                     }
@@ -168,44 +170,50 @@ fun AchievementGridItem(achievement: Achievement, onClick: () -> Unit) {
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = Color(0xFFF0E6FF),
-        modifier = Modifier.height(180.dp).clickable { onClick() }
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(0.85f)
+            .clickable { onClick() }
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Surface(
-                modifier = Modifier.size(64.dp),
+                modifier = Modifier.size(56.dp),
                 shape = CircleShape,
                 color = if (achievement.isUnlocked) Color.White else Color.LightGray.copy(alpha = 0.5f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     if (achievement.isUnlocked) {
-                        Text(achievement.icon, fontSize = 32.sp)
+                        Text(achievement.icon, fontSize = 28.sp)
                     } else {
-                        Icon(Icons.Default.Lock, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Default.Lock, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(20.dp))
                     }
                 }
             }
             
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
             
             Text(
                 text = if (achievement.isUnlocked) achievement.title else "???",
-                fontSize = 16.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1E1B4B)
+                color = Color(0xFF1E1B4B),
+                textAlign = TextAlign.Center,
+                maxLines = 1
             )
             
             Spacer(Modifier.height(4.dp))
             
             Text(
                 text = if (achievement.isUnlocked) achievement.description else "Keep studying to unlock!",
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 color = Color.Gray,
                 textAlign = TextAlign.Center,
-                lineHeight = 16.sp
+                lineHeight = 14.sp,
+                maxLines = 2
             )
         }
     }
@@ -232,14 +240,13 @@ fun AchievementDetailDialog(achievement: Achievement, onDismiss: () -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Surface(
-                        modifier = Modifier.size(120.dp),
+                        modifier = Modifier.size(100.dp),
                         shape = CircleShape,
                         color = Color(0xFF7C3AED).copy(alpha = 0.1f)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             if (achievement.isUnlocked) {
-                                // Simple emoji as requested, but with a background circle like in the image
-                                Text(achievement.icon, fontSize = 56.sp)
+                                Text(achievement.icon, fontSize = 48.sp)
                             } else {
                                 Icon(Icons.Default.Lock, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(40.dp))
                             }
@@ -250,9 +257,10 @@ fun AchievementDetailDialog(achievement: Achievement, onDismiss: () -> Unit) {
                     
                     Text(
                         text = if (achievement.isUnlocked) achievement.title else "Locked Achievement",
-                        fontSize = 24.sp,
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1E1B4B)
+                        color = Color(0xFF1E1B4B),
+                        textAlign = TextAlign.Center
                     )
                     
                     Spacer(Modifier.height(8.dp))
@@ -267,7 +275,6 @@ fun AchievementDetailDialog(achievement: Achievement, onDismiss: () -> Unit) {
                     Spacer(Modifier.height(24.dp))
                     
                     if (achievement.isUnlocked && achievement.unlockedAt != null) {
-                        // Unlocked Date Card
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(20.dp),
@@ -275,8 +282,7 @@ fun AchievementDetailDialog(achievement: Achievement, onDismiss: () -> Unit) {
                         ) {
                             Column(
                                 modifier = Modifier.padding(16.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
+                                horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("Unlocked on", fontSize = 12.sp, color = Color.Gray)
                                 Spacer(Modifier.height(4.dp))
                                 val sdf = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault())
@@ -284,13 +290,13 @@ fun AchievementDetailDialog(achievement: Achievement, onDismiss: () -> Unit) {
                                 val date = Date(achievement.unlockedAt)
                                 Text(
                                     text = sdf.format(date),
-                                    fontSize = 18.sp,
+                                    fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF1E1B4B)
                                 )
                                 Text(
                                     text = stf.format(date),
-                                    fontSize = 14.sp,
+                                    fontSize = 13.sp,
                                     color = Color.Gray
                                 )
                             }
@@ -298,7 +304,6 @@ fun AchievementDetailDialog(achievement: Achievement, onDismiss: () -> Unit) {
                         
                         Spacer(Modifier.height(24.dp))
                         
-                        // Achievement Completed Badge
                         Surface(
                             modifier = Modifier.fillMaxWidth().height(48.dp),
                             shape = RoundedCornerShape(12.dp),
@@ -325,7 +330,6 @@ fun AchievementDetailDialog(achievement: Achievement, onDismiss: () -> Unit) {
                             }
                         }
                     } else {
-                        // Hint Card for locked achievements
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
@@ -335,10 +339,10 @@ fun AchievementDetailDialog(achievement: Achievement, onDismiss: () -> Unit) {
                                 modifier = Modifier.padding(16.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Text("Hint", fontSize = 12.sp, color = Color.Gray)
+                                Text("Requirement", fontSize = 12.sp, color = Color.Gray)
                                 Spacer(Modifier.height(8.dp))
                                 Text(
-                                    text = getAchievementHint(achievement),
+                                    text = achievement.description,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF1E1B4B),
@@ -369,21 +373,5 @@ fun AchievementDetailDialog(achievement: Achievement, onDismiss: () -> Unit) {
                 }
             }
         }
-    }
-}
-
-fun getAchievementHint(achievement: Achievement): String {
-    return when (achievement.id) {
-        "first_steps"  -> "Study your first 5 cards"
-        "centurion"    -> "Study a total of 100 cards"
-        "scholar"      -> "Study a total of 500 cards"
-        "week_warrior" -> "Maintain a 7-day study streak"
-        "month_master" -> "Maintain a 30-day study streak"
-        "speed_demon"  -> "Complete 20 cards in one session"
-        "early_bird"   -> "Study before 8:00 AM"
-        "night_owl"    -> "Study after 10:00 PM"
-        "deck_builder" -> "Create 5 different decks"
-        "perfectionist"-> "Get 100% accuracy in a session"
-        else -> "Keep learning to discover this!"
     }
 }
