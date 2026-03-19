@@ -25,16 +25,20 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flipwise.app.ui.theme.*
 import com.flipwise.app.ui.components.FlipWiseTextField
+import com.flipwise.app.viewmodel.ProfileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     onNavigateToLogin: () -> Unit,
-    onRegisterSuccess: () -> Unit
+    onRegisterSuccess: () -> Unit,
+    profileViewModel: ProfileViewModel = viewModel()
 ) {
-    var name by remember { mutableStateOf("") }
+    var fullName by remember { mutableStateOf("") }
+    var displayUsername by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -203,7 +207,7 @@ fun RegisterScreen(
                         }
                     }
 
-                    // Name Field
+                    // Full Name Field -> username in profile
                     Column {
                         Text(
                             text = "Full Name",
@@ -213,10 +217,27 @@ fun RegisterScreen(
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
                         FlipWiseTextField(
-                            value = name,
-                            onValueChange = { name = it },
+                            value = fullName,
+                            onValueChange = { fullName = it },
                             placeholder = "John Doe",
                             leadingIcon = Icons.Rounded.Person
+                        )
+                    }
+
+                    // Display Name Field -> flipper123 in profile
+                    Column {
+                        Text(
+                            text = "Display Name (e.g. flipper123)",
+                            color = NavyInk,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        FlipWiseTextField(
+                            value = displayUsername,
+                            onValueChange = { displayUsername = it },
+                            placeholder = "flipper123",
+                            leadingIcon = Icons.Rounded.Badge
                         )
                     }
 
@@ -281,7 +302,7 @@ fun RegisterScreen(
                     // Submit Button
                     Button(
                         onClick = {
-                            if (name.isBlank() || email.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
+                            if (fullName.isBlank() || displayUsername.isBlank() || email.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
                                 error = "Please fill in all fields"
                             } else if (!email.contains("@")) {
                                 error = "Please enter a valid email"
@@ -290,7 +311,7 @@ fun RegisterScreen(
                             } else if (password != confirmPassword) {
                                 error = "Passwords do not match"
                             } else {
-                                // Simplified register logic
+                                profileViewModel.loginOrRegister(displayUsername, fullName)
                                 onRegisterSuccess()
                             }
                         },
