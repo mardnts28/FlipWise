@@ -5,7 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material3.*
@@ -23,9 +25,10 @@ import androidx.core.graphics.toColorInt
 @Composable
 fun CreateDeckDialog(
     onDismiss: () -> Unit,
-    onCreate: (String, String, String) -> Unit
+    onCreate: (String, String, String, String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
+    var subject by remember { mutableStateOf("") }
     val colors = listOf(
         "#7C3AED", "#F97316", "#10B981", "#EF4444",
         "#FBBF24", "#3B82F6", "#8B5CF6", "#F472B6"
@@ -40,7 +43,9 @@ fun CreateDeckDialog(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
         ) {
             Column(
-                modifier = Modifier.padding(24.dp)
+                modifier = Modifier
+                    .padding(24.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
                 Text("Deck Name", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
                 Spacer(Modifier.height(8.dp))
@@ -58,7 +63,25 @@ fun CreateDeckDialog(
                     )
                 )
 
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(20.dp))
+
+                Text("Subject", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+                Spacer(Modifier.height(8.dp))
+                TextField(
+                    value = subject,
+                    onValueChange = { subject = it },
+                    placeholder = { Text("e.g., Language Learning", color = Color.LightGray) },
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFF9F9FB),
+                        unfocusedContainerColor = Color(0xFFF9F9FB),
+                        disabledContainerColor = Color(0xFFF9F9FB),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    )
+                )
+
+                Spacer(Modifier.height(20.dp))
 
                 Text("Deck Color", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
                 Spacer(Modifier.height(12.dp))
@@ -123,7 +146,7 @@ fun CreateDeckDialog(
                                     color = Color(0xFF1E1B4B)
                                 )
                                 Text(
-                                    text = "Flashcards",
+                                    text = subject.ifBlank { "Subject" },
                                     fontSize = 14.sp,
                                     color = Color.Gray
                                 )
@@ -134,9 +157,9 @@ fun CreateDeckDialog(
 
                 Spacer(Modifier.height(24.dp))
 
-                // Action Button (Bolder purple color as requested)
+                // Action Button
                 Button(
-                    onClick = { onCreate(name, selectedColor, defaultIcon) },
+                    onClick = { onCreate(name, subject, selectedColor, defaultIcon) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
@@ -146,12 +169,12 @@ fun CreateDeckDialog(
                         contentColor = Color.White,
                         disabledContainerColor = Color(0xFF7C3AED).copy(alpha = 0.5f)
                     ),
-                    enabled = name.isNotBlank()
+                    enabled = name.isNotBlank() && subject.isNotBlank()
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Create", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text("Create Deck", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 
