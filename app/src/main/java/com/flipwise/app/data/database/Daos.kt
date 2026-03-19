@@ -1,381 +1,116 @@
-package com.flipwise.app.data.database;
+package com.flipwise.app.data.database
 
-import android.database.Cursor;
-import android.os.CancellationSignal;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.room.CoroutinesRoom;
-import androidx.room.EntityDeletionOrUpdateAdapter;
-import androidx.room.EntityInsertionAdapter;
-import androidx.room.RoomDatabase;
-import androidx.room.RoomSQLiteQuery;
-import androidx.room.SharedSQLiteStatement;
-import androidx.room.util.CursorUtil;
-import androidx.room.util.DBUtil;
-import androidx.sqlite.db.SupportSQLiteStatement;
-import com.flipwise.app.data.model.Deck;
-import java.lang.Class;
-import java.lang.Exception;
-import java.lang.Long;
-import java.lang.Object;
-import java.lang.Override;
-import java.lang.String;
-import java.lang.SuppressWarnings;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.Callable;
-import kotlin.Unit;
-import kotlin.coroutines.Continuation;
-import kotlinx.coroutines.flow.Flow;
+import androidx.room.*
+import com.flipwise.app.data.model.*
+import kotlinx.coroutines.flow.Flow
 
-@SuppressWarnings({"unchecked", "deprecation"})
-public final class DeckDao_Impl implements DeckDao {
-  private final RoomDatabase __db;
+@Dao
+interface DeckDao {
+    @Query("SELECT * FROM decks ORDER BY createdAt DESC")
+    fun getAllDecks(): Flow<List<Deck>>
 
-  private final EntityInsertionAdapter<Deck> __insertionAdapterOfDeck;
+    @Query("SELECT * FROM decks WHERE id = :deckId")
+    suspend fun getDeckById(deckId: String): Deck?
 
-  private final EntityDeletionOrUpdateAdapter<Deck> __updateAdapterOfDeck;
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDeck(deck: Deck)
 
-  private final SharedSQLiteStatement __preparedStmtOfDeleteDeckById;
+    @Update
+    suspend fun updateDeck(deck: Deck)
 
-  public DeckDao_Impl(@NonNull final RoomDatabase __db) {
-    this.__db = __db;
-    this.__insertionAdapterOfDeck = new EntityInsertionAdapter<Deck>(__db) {
-      @Override
-      @NonNull
-      protected String createQuery() {
-        return "INSERT OR REPLACE INTO `decks` (`id`,`name`,`subject`,`color`,`icon`,`createdAt`,`lastStudied`,`cardCount`,`masteredCount`) VALUES (?,?,?,?,?,?,?,?,?)";
-      }
+    @Query("DELETE FROM decks WHERE id = :deckId")
+    suspend fun deleteDeckById(deckId: String)
+}
 
-      @Override
-      protected void bind(@NonNull final SupportSQLiteStatement statement,
-          @NonNull final Deck entity) {
-        if (entity.getId() == null) {
-          statement.bindNull(1);
-        } else {
-          statement.bindString(1, entity.getId());
-        }
-        if (entity.getName() == null) {
-          statement.bindNull(2);
-        } else {
-          statement.bindString(2, entity.getName());
-        }
-        if (entity.getSubject() == null) {
-          statement.bindNull(3);
-        } else {
-          statement.bindString(3, entity.getSubject());
-        }
-        if (entity.getColor() == null) {
-          statement.bindNull(4);
-        } else {
-          statement.bindString(4, entity.getColor());
-        }
-        if (entity.getIcon() == null) {
-          statement.bindNull(5);
-        } else {
-          statement.bindString(5, entity.getIcon());
-        }
-        statement.bindLong(6, entity.getCreatedAt());
-        if (entity.getLastStudied() == null) {
-          statement.bindNull(7);
-        } else {
-          statement.bindLong(7, entity.getLastStudied());
-        }
-        statement.bindLong(8, entity.getCardCount());
-        statement.bindLong(9, entity.getMasteredCount());
-      }
-    };
-    this.__updateAdapterOfDeck = new EntityDeletionOrUpdateAdapter<Deck>(__db) {
-      @Override
-      @NonNull
-      protected String createQuery() {
-        return "UPDATE OR ABORT `decks` SET `id` = ?,`name` = ?,`subject` = ?,`color` = ?,`icon` = ?,`createdAt` = ?,`lastStudied` = ?,`cardCount` = ?,`masteredCount` = ? WHERE `id` = ?";
-      }
+@Dao
+interface FlashcardDao {
+    @Query("SELECT * FROM flashcards WHERE deckId = :deckId ORDER BY createdAt DESC")
+    fun getCardsByDeck(deckId: String): Flow<List<Flashcard>>
 
-      @Override
-      protected void bind(@NonNull final SupportSQLiteStatement statement,
-          @NonNull final Deck entity) {
-        if (entity.getId() == null) {
-          statement.bindNull(1);
-        } else {
-          statement.bindString(1, entity.getId());
-        }
-        if (entity.getName() == null) {
-          statement.bindNull(2);
-        } else {
-          statement.bindString(2, entity.getName());
-        }
-        if (entity.getSubject() == null) {
-          statement.bindNull(3);
-        } else {
-          statement.bindString(3, entity.getSubject());
-        }
-        if (entity.getColor() == null) {
-          statement.bindNull(4);
-        } else {
-          statement.bindString(4, entity.getColor());
-        }
-        if (entity.getIcon() == null) {
-          statement.bindNull(5);
-        } else {
-          statement.bindString(5, entity.getIcon());
-        }
-        statement.bindLong(6, entity.getCreatedAt());
-        if (entity.getLastStudied() == null) {
-          statement.bindNull(7);
-        } else {
-          statement.bindLong(7, entity.getLastStudied());
-        }
-        statement.bindLong(8, entity.getCardCount());
-        statement.bindLong(9, entity.getMasteredCount());
-        if (entity.getId() == null) {
-          statement.bindNull(10);
-        } else {
-          statement.bindString(10, entity.getId());
-        }
-      }
-    };
-    this.__preparedStmtOfDeleteDeckById = new SharedSQLiteStatement(__db) {
-      @Override
-      @NonNull
-      public String createQuery() {
-        final String _query = "DELETE FROM decks WHERE id = ?";
-        return _query;
-      }
-    };
-  }
+    @Query("SELECT * FROM flashcards WHERE id = :cardId")
+    suspend fun getCardById(cardId: String): Flashcard?
 
-  @Override
-  public Object insertDeck(final Deck deck, final Continuation<? super Unit> $completion) {
-    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
-      @Override
-      @NonNull
-      public Unit call() throws Exception {
-        __db.beginTransaction();
-        try {
-          __insertionAdapterOfDeck.insert(deck);
-          __db.setTransactionSuccessful();
-          return Unit.INSTANCE;
-        } finally {
-          __db.endTransaction();
-        }
-      }
-    }, $completion);
-  }
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCard(card: Flashcard)
 
-  @Override
-  public Object updateDeck(final Deck deck, final Continuation<? super Unit> $completion) {
-    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
-      @Override
-      @NonNull
-      public Unit call() throws Exception {
-        __db.beginTransaction();
-        try {
-          __updateAdapterOfDeck.handle(deck);
-          __db.setTransactionSuccessful();
-          return Unit.INSTANCE;
-        } finally {
-          __db.endTransaction();
-        }
-      }
-    }, $completion);
-  }
+    @Update
+    suspend fun updateCard(card: Flashcard)
 
-  @Override
-  public Object deleteDeckById(final String deckId, final Continuation<? super Unit> $completion) {
-    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
-      @Override
-      @NonNull
-      public Unit call() throws Exception {
-        final SupportSQLiteStatement _stmt = __preparedStmtOfDeleteDeckById.acquire();
-        int _argIndex = 1;
-        if (deckId == null) {
-          _stmt.bindNull(_argIndex);
-        } else {
-          _stmt.bindString(_argIndex, deckId);
-        }
-        try {
-          __db.beginTransaction();
-          try {
-            _stmt.executeUpdateDelete();
-            __db.setTransactionSuccessful();
-            return Unit.INSTANCE;
-          } finally {
-            __db.endTransaction();
-          }
-        } finally {
-          __preparedStmtOfDeleteDeckById.release(_stmt);
-        }
-      }
-    }, $completion);
-  }
+    @Delete
+    suspend fun deleteCard(card: Flashcard)
 
-  @Override
-  public Flow<List<Deck>> getAllDecks() {
-    final String _sql = "SELECT * FROM decks ORDER BY createdAt DESC";
-    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
-    return CoroutinesRoom.createFlow(__db, false, new String[] {"decks"}, new Callable<List<Deck>>() {
-      @Override
-      @NonNull
-      public List<Deck> call() throws Exception {
-        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
-        try {
-          final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
-          final int _cursorIndexOfName = CursorUtil.getColumnIndexOrThrow(_cursor, "name");
-          final int _cursorIndexOfSubject = CursorUtil.getColumnIndexOrThrow(_cursor, "subject");
-          final int _cursorIndexOfColor = CursorUtil.getColumnIndexOrThrow(_cursor, "color");
-          final int _cursorIndexOfIcon = CursorUtil.getColumnIndexOrThrow(_cursor, "icon");
-          final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
-          final int _cursorIndexOfLastStudied = CursorUtil.getColumnIndexOrThrow(_cursor, "lastStudied");
-          final int _cursorIndexOfCardCount = CursorUtil.getColumnIndexOrThrow(_cursor, "cardCount");
-          final int _cursorIndexOfMasteredCount = CursorUtil.getColumnIndexOrThrow(_cursor, "masteredCount");
-          final List<Deck> _result = new ArrayList<Deck>(_cursor.getCount());
-          while (_cursor.moveToNext()) {
-            final Deck _item;
-            final String _tmpId;
-            if (_cursor.isNull(_cursorIndexOfId)) {
-              _tmpId = null;
-            } else {
-              _tmpId = _cursor.getString(_cursorIndexOfId);
-            }
-            final String _tmpName;
-            if (_cursor.isNull(_cursorIndexOfName)) {
-              _tmpName = null;
-            } else {
-              _tmpName = _cursor.getString(_cursorIndexOfName);
-            }
-            final String _tmpSubject;
-            if (_cursor.isNull(_cursorIndexOfSubject)) {
-              _tmpSubject = null;
-            } else {
-              _tmpSubject = _cursor.getString(_cursorIndexOfSubject);
-            }
-            final String _tmpColor;
-            if (_cursor.isNull(_cursorIndexOfColor)) {
-              _tmpColor = null;
-            } else {
-              _tmpColor = _cursor.getString(_cursorIndexOfColor);
-            }
-            final String _tmpIcon;
-            if (_cursor.isNull(_cursorIndexOfIcon)) {
-              _tmpIcon = null;
-            } else {
-              _tmpIcon = _cursor.getString(_cursorIndexOfIcon);
-            }
-            final long _tmpCreatedAt;
-            _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
-            final Long _tmpLastStudied;
-            if (_cursor.isNull(_cursorIndexOfLastStudied)) {
-              _tmpLastStudied = null;
-            } else {
-              _tmpLastStudied = _cursor.getLong(_cursorIndexOfLastStudied);
-            }
-            final int _tmpCardCount;
-            _tmpCardCount = _cursor.getInt(_cursorIndexOfCardCount);
-            final int _tmpMasteredCount;
-            _tmpMasteredCount = _cursor.getInt(_cursorIndexOfMasteredCount);
-            _item = new Deck(_tmpId,_tmpName,_tmpSubject,_tmpColor,_tmpIcon,_tmpCreatedAt,_tmpLastStudied,_tmpCardCount,_tmpMasteredCount);
-            _result.add(_item);
-          }
-          return _result;
-        } finally {
-          _cursor.close();
-        }
-      }
+    @Query("DELETE FROM flashcards WHERE deckId = :deckId")
+    suspend fun deleteCardsByDeck(deckId: String)
 
-      @Override
-      protected void finalize() {
-        _statement.release();
-      }
-    });
-  }
+    @Query("SELECT COUNT(*) FROM flashcards WHERE deckId = :deckId")
+    suspend fun getCardCountForDeck(deckId: String): Int
+}
 
-  @Override
-  public Object getDeckById(final String deckId, final Continuation<? super Deck> $completion) {
-    final String _sql = "SELECT * FROM decks WHERE id = ?";
-    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 1);
-    int _argIndex = 1;
-    if (deckId == null) {
-      _statement.bindNull(_argIndex);
-    } else {
-      _statement.bindString(_argIndex, deckId);
-    }
-    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
-    return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<Deck>() {
-      @Override
-      @Nullable
-      public Deck call() throws Exception {
-        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
-        try {
-          final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
-          final int _cursorIndexOfName = CursorUtil.getColumnIndexOrThrow(_cursor, "name");
-          final int _cursorIndexOfSubject = CursorUtil.getColumnIndexOrThrow(_cursor, "subject");
-          final int _cursorIndexOfColor = CursorUtil.getColumnIndexOrThrow(_cursor, "color");
-          final int _cursorIndexOfIcon = CursorUtil.getColumnIndexOrThrow(_cursor, "icon");
-          final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
-          final int _cursorIndexOfLastStudied = CursorUtil.getColumnIndexOrThrow(_cursor, "lastStudied");
-          final int _cursorIndexOfCardCount = CursorUtil.getColumnIndexOrThrow(_cursor, "cardCount");
-          final int _cursorIndexOfMasteredCount = CursorUtil.getColumnIndexOrThrow(_cursor, "masteredCount");
-          final Deck _result;
-          if (_cursor.moveToFirst()) {
-            final String _tmpId;
-            if (_cursor.isNull(_cursorIndexOfId)) {
-              _tmpId = null;
-            } else {
-              _tmpId = _cursor.getString(_cursorIndexOfId);
-            }
-            final String _tmpName;
-            if (_cursor.isNull(_cursorIndexOfName)) {
-              _tmpName = null;
-            } else {
-              _tmpName = _cursor.getString(_cursorIndexOfName);
-            }
-            final String _tmpSubject;
-            if (_cursor.isNull(_cursorIndexOfSubject)) {
-              _tmpSubject = null;
-            } else {
-              _tmpSubject = _cursor.getString(_cursorIndexOfSubject);
-            }
-            final String _tmpColor;
-            if (_cursor.isNull(_cursorIndexOfColor)) {
-              _tmpColor = null;
-            } else {
-              _tmpColor = _cursor.getString(_cursorIndexOfColor);
-            }
-            final String _tmpIcon;
-            if (_cursor.isNull(_cursorIndexOfIcon)) {
-              _tmpIcon = null;
-            } else {
-              _tmpIcon = _cursor.getString(_cursorIndexOfIcon);
-            }
-            final long _tmpCreatedAt;
-            _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
-            final Long _tmpLastStudied;
-            if (_cursor.isNull(_cursorIndexOfLastStudied)) {
-              _tmpLastStudied = null;
-            } else {
-              _tmpLastStudied = _cursor.getLong(_cursorIndexOfLastStudied);
-            }
-            final int _tmpCardCount;
-            _tmpCardCount = _cursor.getInt(_cursorIndexOfCardCount);
-            final int _tmpMasteredCount;
-            _tmpMasteredCount = _cursor.getInt(_cursorIndexOfMasteredCount);
-            _result = new Deck(_tmpId,_tmpName,_tmpSubject,_tmpColor,_tmpIcon,_tmpCreatedAt,_tmpLastStudied,_tmpCardCount,_tmpMasteredCount);
-          } else {
-            _result = null;
-          }
-          return _result;
-        } finally {
-          _cursor.close();
-          _statement.release();
-        }
-      }
-    }, $completion);
-  }
+@Dao
+interface StudySessionDao {
+    @Query("SELECT * FROM study_sessions ORDER BY date DESC")
+    fun getAllSessions(): Flow<List<StudySession>>
 
-  @NonNull
-  public static List<Class<?>> getRequiredConverters() {
-    return Collections.emptyList();
-  }
+    @Insert
+    suspend fun insertSession(session: StudySession)
+
+    @Query("SELECT * FROM study_sessions WHERE date >= :startDate")
+    suspend fun getSessionsSince(startDate: Long): List<StudySession>
+}
+
+@Dao
+interface AchievementDao {
+    @Query("SELECT * FROM achievements")
+    fun getAllAchievements(): Flow<List<Achievement>>
+
+    @Query("SELECT * FROM achievements")
+    suspend fun getAllAchievementsOnce(): List<Achievement>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAchievement(achievement: Achievement)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAchievements(achievements: List<Achievement>)
+
+    @Update
+    suspend fun updateAchievement(achievement: Achievement)
+
+    @Query("DELETE FROM achievements")
+    suspend fun deleteAllAchievements()
+}
+
+@Dao
+interface ProfileDao {
+    @Query("SELECT * FROM user_profile LIMIT 1")
+    fun getUserProfile(): Flow<UserProfile?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProfile(profile: UserProfile)
+
+    @Update
+    suspend fun updateProfile(profile: UserProfile)
+}
+
+@Dao
+interface FriendDao {
+    @Query("SELECT * FROM friends ORDER BY addedAt DESC")
+    fun getAllFriends(): Flow<List<Friend>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFriend(friend: Friend)
+
+    @Query("DELETE FROM friends WHERE id = :friendId")
+    suspend fun deleteFriend(friendId: String)
+}
+
+@Dao
+interface ChallengeDao {
+    @Query("SELECT * FROM challenges ORDER BY startDate DESC")
+    fun getAllChallenges(): Flow<List<Challenge>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertChallenge(challenge: Challenge)
+
+    @Query("DELETE FROM challenges WHERE id = :challengeId")
+    suspend fun deleteChallenge(challengeId: String)
 }
