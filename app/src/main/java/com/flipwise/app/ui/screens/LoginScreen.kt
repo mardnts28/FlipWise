@@ -26,14 +26,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flipwise.app.ui.theme.*
 import com.flipwise.app.ui.components.FlipWiseTextField
+import com.flipwise.app.viewmodel.ProfileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     onNavigateToRegister: () -> Unit,
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: () -> Unit,
+    profileViewModel: ProfileViewModel = viewModel()
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -247,7 +250,8 @@ fun LoginScreen(
                             } else if (!email.contains("@")) {
                                 error = "Please enter a valid email"
                             } else {
-                                // Simplified login logic
+                                // Update profile with login info
+                                profileViewModel.loginOrRegister("", email)
                                 onLoginSuccess()
                             }
                         },
