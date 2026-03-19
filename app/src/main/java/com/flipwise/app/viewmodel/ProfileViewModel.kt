@@ -14,13 +14,15 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     private val profileDao   = db.profileDao()
     private val friendDao    = db.friendDao()
     private val challengeDao = db.challengeDao()
+    private val sessionDao   = db.studySessionDao()
 
     val userProfile: StateFlow<UserProfile> = profileDao.getUserProfile()
         .map { it ?: UserProfile() }
-        .stateIn(viewModelScope, SharingStarted.Lazily, UserProfile())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, UserProfile())
 
     val friends: Flow<List<Friend>>       = friendDao.getAllFriends()
     val challenges: Flow<List<Challenge>> = challengeDao.getAllChallenges()
+    val recentSessions: Flow<List<StudySession>> = sessionDao.getAllSessions().map { it.take(5) }
 
     init {
         viewModelScope.launch {
@@ -33,9 +35,30 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     fun updateProfile(displayName: String, username: String, bio: String, avatar: String) {
         viewModelScope.launch {
-            val current = profileDao.getUserProfile().firstOrNull() ?: UserProfile()
-            profileDao.updateProfile(
-                current.copy(displayName = displayName, username = username, bio = bio, avatar = avatar)
+            // Use current state to preserve fields like level, xp, etc.
+            val current = userProfile.value
+            profileDao.insertProfile(
+                current.copy(
+                    displayName = displayName, 
+                    username = username, 
+                    bio = bio, 
+                    avatar = avatar
+                )
+            )
+        }
+    }
+
+    fun loginOrRegister(name: String, email: String) {
+        viewModelScope.launch {
+            val current = userProfile.value
+            val finalName = if (name.isNotBlank()) name else email.substringBefore("@")
+            val finalUsername = email.substringBefore("@")
+            
+            profileDao.insertProfile(
+                current.copy(
+                    displayName = finalName,
+                    username = finalUsername
+                )
             )
         }
     }
