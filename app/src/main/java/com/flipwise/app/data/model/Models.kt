@@ -10,11 +10,13 @@ import kotlinx.parcelize.Parcelize
 data class Deck(
     @PrimaryKey val id: String,
     val name: String,
+    val subject: String = "",
     val color: String,
     val icon: String,
     val createdAt: Long = System.currentTimeMillis(),
     val lastStudied: Long? = null,
-    val cardCount: Int = 0
+    val cardCount: Int = 0,
+    val masteredCount: Int = 0
 ) : Parcelable
 
 @Parcelize
@@ -75,6 +77,8 @@ data class UserProfile(
     val bio: String = "Learning every day!",
     val joinedAt: Long = System.currentTimeMillis(),
     val level: Int = 1,
+    val xp: Int = 0,
+    val totalPoints: Int = 0,
     val badges: String = ""
 ) : Parcelable
 
