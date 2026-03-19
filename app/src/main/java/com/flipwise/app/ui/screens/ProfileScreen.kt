@@ -24,12 +24,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.flipwise.app.data.model.StudySession
 import com.flipwise.app.viewmodel.ProfileViewModel
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
 fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = viewModel()) {
     val profile by viewModel.userProfile.collectAsState()
     val friends by viewModel.friends.collectAsState(initial = emptyList())
+    val recentSessions by viewModel.recentSessions.collectAsState(initial = emptyList())
     
     var selectedTab by remember { mutableIntStateOf(0) }
     var showCreateChallenge by remember { mutableStateOf(false) }
@@ -80,6 +84,9 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = view
                 Spacer(Modifier.height(24.dp))
                 
                 // XP Bar
+                val xpInCurrentLevel = profile.xp % 500
+                val progress = xpInCurrentLevel / 500f
+                
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
@@ -88,11 +95,11 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = view
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Level ${profile.level}", color = Color.White, fontWeight = FontWeight.Bold)
-                            Text("0 / 500 XP", color = Color.White)
+                            Text("$xpInCurrentLevel / 500 XP", color = Color.White)
                         }
                         Spacer(Modifier.height(8.dp))
                         LinearProgressIndicator(
-                            progress = { 0f },
+                            progress = { progress },
                             modifier = Modifier.fillMaxWidth().height(10.dp).clip(CircleShape),
                             color = Color.White,
                             trackColor = Color.White.copy(alpha = 0.2f)
@@ -104,9 +111,9 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = view
                 
                 // Stats
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    ProfileStatItem("0", "Points")
+                    ProfileStatItem(profile.totalPoints.toString(), "Points")
                     ProfileStatItem(friends.size.toString(), "Friends")
-                    ProfileStatItem("0", "Badges")
+                    ProfileStatItem(if(profile.badges.isEmpty()) "0" else profile.badges.split(",").size.toString(), "Badges")
                 }
                 Spacer(Modifier.height(16.dp))
             }
@@ -121,17 +128,24 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = view
         ) {
             Row(modifier = Modifier.padding(4.dp)) {
                 TabButton(
-                    text = "Friends",
-                    icon = Icons.Default.People,
+                    text = "Activity",
+                    icon = Icons.Default.History,
                     isSelected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
                     modifier = Modifier.weight(1f)
                 )
                 TabButton(
-                    text = "Challenges",
-                    icon = Icons.Default.TrackChanges,
+                    text = "Friends",
+                    icon = Icons.Default.People,
                     isSelected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
+                    modifier = Modifier.weight(1f)
+                )
+                TabButton(
+                    text = "Challenges",
+                    icon = Icons.Default.TrackChanges,
+                    isSelected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -139,57 +153,81 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = view
 
         // --- Tab Content ---
         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-            if (selectedTab == 0) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("My Friends (${friends.size})", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
-                    Button(
-                        onClick = { showAddFriend = true },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
-                    ) {
-                        Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Add Friend")
+            when (selectedTab) {
+                0 -> {
+                    Text("Recent Activity", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+                    Spacer(Modifier.height(16.dp))
+                    if (recentSessions.isEmpty()) {
+                        EmptyStateView(
+                            icon = Icons.Default.History,
+                            title = "No activity yet",
+                            description = "Start studying to earn points and XP!"
+                        )
+                    } else {
+                        recentSessions.forEach { session ->
+                            RecentActivityItem(session)
+                            Spacer(Modifier.height(12.dp))
+                        }
                     }
                 }
-                
-                Spacer(Modifier.height(24.dp))
-                
-                EmptyStateView(
-                    icon = Icons.Default.PeopleOutline,
-                    title = "No friends yet",
-                    description = "Add friends to compete together!"
-                )
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Active Challenges (0)", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
-                    Button(
-                        onClick = { showCreateChallenge = true },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF97316))
+                1 -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.EmojiEvents, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("New Challenge")
+                        Text("My Friends (${friends.size})", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+                        Button(
+                            onClick = { showAddFriend = true },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
+                        ) {
+                            Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Add Friend")
+                        }
+                    }
+                    
+                    Spacer(Modifier.height(24.dp))
+                    
+                    if (friends.isEmpty()) {
+                        EmptyStateView(
+                            icon = Icons.Default.PeopleOutline,
+                            title = "No friends yet",
+                            description = "Add friends to compete together!"
+                        )
+                    } else {
+                        // Friend list could be added here
                     }
                 }
-                
-                Spacer(Modifier.height(24.dp))
-                
-                EmptyStateView(
-                    icon = Icons.Default.EmojiEvents,
-                    title = "No challenges yet",
-                    description = "Create a challenge to compete with friends!"
-                )
+                2 -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Active Challenges (0)", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+                        Button(
+                            onClick = { showCreateChallenge = true },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF97316))
+                        ) {
+                            Icon(Icons.Default.EmojiEvents, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("New Challenge")
+                        }
+                    }
+                    
+                    Spacer(Modifier.height(24.dp))
+                    
+                    EmptyStateView(
+                        icon = Icons.Default.EmojiEvents,
+                        title = "No challenges yet",
+                        description = "Create a challenge to compete with friends!"
+                    )
+                }
             }
+            Spacer(Modifier.height(100.dp))
         }
     }
 
@@ -215,6 +253,41 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = view
     
     if (showAddFriend) {
         AddFriendStyledDialog(onDismiss = { showAddFriend = false })
+    }
+}
+
+@Composable
+fun RecentActivityItem(session: StudySession) {
+    val sdf = remember { SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()) }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        shadowElevation = 1.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xFF7C3AED).copy(alpha = 0.1f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.School, contentDescription = null, tint = Color(0xFF7C3AED))
+                }
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Study Session", fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+                Text(sdf.format(Date(session.date)), fontSize = 12.sp, color = Color.Gray)
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text("+${session.pointsEarned} pts", fontWeight = FontWeight.Bold, color = Color(0xFF10B981))
+                Text("${session.correctCount}/${session.cardsStudied} correct", fontSize = 12.sp, color = Color.Gray)
+            }
+        }
     }
 }
 
