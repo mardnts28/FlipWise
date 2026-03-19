@@ -89,8 +89,8 @@ fun DeckListScreen(
     if (showCreateDialog) {
         CreateDeckDialog(
             onDismiss = { showCreateDialog = false },
-            onCreate = { name: String, color: String, icon: String ->
-                viewModel.createDeck(name, color, icon)
+            onCreate = { name, subject, color, icon ->
+                viewModel.createDeck(name, subject, color, icon)
                 showCreateDialog = false
             }
         )
@@ -121,7 +121,10 @@ fun DeckDetailItem(deck: Deck, onClick: () -> Unit, onDelete: () -> Unit) {
                 Spacer(Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(deck.name, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
-                    Text("${deck.cardCount} cards", fontSize = 14.sp, color = Color.Gray)
+                    if (deck.subject.isNotBlank()) {
+                        Text(deck.subject, fontSize = 14.sp, color = Color.Gray)
+                    }
+                    Text("${deck.cardCount} cards", fontSize = 12.sp, color = Color.Gray.copy(alpha = 0.7f))
                 }
                 IconButton(onClick = onDelete) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFFF8A8A))
@@ -130,17 +133,18 @@ fun DeckDetailItem(deck: Deck, onClick: () -> Unit, onDelete: () -> Unit) {
             
             Spacer(Modifier.height(20.dp))
             
+            val progressPercent = if (deck.cardCount > 0) (deck.masteredCount * 100 / deck.cardCount) else 0
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("Progress", fontSize = 12.sp, color = Color.Gray)
-                Text("${if (deck.cardCount > 0) 33 else 0}%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF10B981))
+                Text("$progressPercent%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF10B981))
             }
             Spacer(Modifier.height(8.dp))
             LinearProgressIndicator(
-                progress = { if (deck.cardCount > 0) 0.33f else 0f },
+                progress = { if (deck.cardCount > 0) deck.masteredCount.toFloat() / deck.cardCount else 0f },
                 modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
                 color = Color(0xFF10B981),
                 trackColor = Color(0xFFF0F0F5)
