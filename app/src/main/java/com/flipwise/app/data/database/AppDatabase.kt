@@ -14,7 +14,7 @@ import com.flipwise.app.data.model.*
         Friend::class,
         Challenge::class
     ],
-    version = 2,
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
