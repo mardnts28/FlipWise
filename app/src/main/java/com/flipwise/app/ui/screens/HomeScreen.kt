@@ -138,9 +138,10 @@ fun HomeScreen(
                 shadowElevation = 4.dp,
                 color = Color.White
             ) {
+                val totalMastered = decks.sumOf { it.masteredCount }
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Cards Mastered", fontSize = 14.sp, color = Color.Gray)
-                    Text("0", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF10B981))
+                    Text("$totalMastered", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF10B981))
                 }
             }
         }
@@ -228,8 +229,8 @@ fun HomeScreen(
     if (showCreateDialog) {
         com.flipwise.app.ui.components.CreateDeckDialog(
             onDismiss = { showCreateDialog = false },
-            onCreate = { name, color, icon ->
-                viewModel.createDeck(name, color, icon)
+            onCreate = { name, subject, color, icon ->
+                viewModel.createDeck(name, subject, color, icon)
                 showCreateDialog = false
             }
         )
@@ -262,9 +263,12 @@ fun RecentDeckItem(deck: Deck, onClick: () -> Unit) {
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(deck.name, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+                if (deck.subject.isNotBlank()) {
+                    Text(deck.subject, fontSize = 12.sp, color = Color.Gray)
+                }
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("0/${deck.cardCount}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+                Text("${deck.masteredCount}/${deck.cardCount}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
                 Text("mastered", fontSize = 11.sp, color = Color(0xFF10B981))
             }
         }
