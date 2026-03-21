@@ -263,6 +263,7 @@ fun ProfileScreen(
 
     if (showCreateChallenge) {
         CreateChallengeDialog(
+            friends = friends,
             onDismiss = { showCreateChallenge = false },
             onCreate = { challenge ->
                 viewModel.addChallenge(challenge)

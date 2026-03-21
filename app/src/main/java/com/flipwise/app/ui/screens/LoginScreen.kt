@@ -394,10 +394,13 @@ fun LoginScreen(
                                     isLoading = true
                                     val signInResult = profileViewModel.signInWithGoogle(token)
                                     if (signInResult.isSuccess) {
-                                        // Pre-fill profile with Google name if bucket is empty
-                                        profileViewModel.loginOrRegister(account.displayName ?: "", account.email ?: "")
+                                        val regResult = profileViewModel.loginOrRegister(account.displayName ?: "", account.email ?: "")
                                         isLoading = false
-                                        onLoginSuccess()
+                                        if (regResult.isSuccess) {
+                                            onLoginSuccess()
+                                        } else {
+                                            error = "Failed to finalize account: ${regResult.exceptionOrNull()?.message}"
+                                        }
                                     } else {
                                         isLoading = false
                                         error = "Verification failed. Try again."

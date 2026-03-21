@@ -7,6 +7,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
 
 class FlipWiseRepository(context: Context) {
     private val db         by lazy { AppDatabase.getDatabase(context) }
@@ -166,6 +168,23 @@ class FlipWiseRepository(context: Context) {
         }
     }
 
+    fun getLeaderboardFlow(): Flow<List<UserProfile>> = kotlinx.coroutines.flow.callbackFlow {
+        val ref = realtimeDb.child("leaderboard").orderByChild("totalPoints").limitToLast(100)
+        val listener = object : com.google.firebase.database.ValueEventListener {
+            override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                val list = snapshot.children.mapNotNull { child ->
+                    child.getValue(UserProfile::class.java)
+                }.reversed()
+                trySend(list)
+            }
+            override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                close(error.toException())
+            }
+        }
+        ref.addValueEventListener(listener)
+        awaitClose { ref.removeEventListener(listener) }
+    }
+
     // --- Challenges ---
     suspend fun addChallenge(challenge: Challenge) {
         db.challengeDao().insertChallenge(challenge)
@@ -191,4 +210,61 @@ class FlipWiseRepository(context: Context) {
     }
 
     fun getActiveChallenges(): Flow<List<Challenge>> = db.challengeDao().getAllChallenges()
+
+    // --- Friends Social System ---
+    suspend fun findUserByUsername(username: String): UserProfile? {
+        return try {
+            val snapshot = realtimeDb.child("leaderboard")
+                .orderByChild("username")
+                .equalTo(username.trim())
+                .limitToFirst(1)
+                .get()
+                .await()
+            
+            snapshot.children.firstOrNull()?.getValue(UserProfile::class.java)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun addFriend(targetId: String, targetProfile: UserProfile) {
+        // 1. Add to my friends list in cloud
+        val friendEntry = Friend(
+            id = targetId,
+            userId = userId,
+            username = targetProfile.username,
+            displayName = targetProfile.displayName,
+            avatar = targetProfile.avatar,
+            status = "accepted",
+            addedAt = System.currentTimeMillis(),
+            totalPoints = targetProfile.totalPoints,
+            currentStreak = 0, // Simplified for now
+            totalCardsStudied = 0
+        )
+        realtimeDb.child("users").child(userId).child("friends").child(targetId).setValue(friendEntry).await()
+        
+        // 2. Add to my local DB
+        db.friendDao().insertFriend(friendEntry)
+    }
+
+    fun getFriendsFlow(): Flow<List<Friend>> = callbackFlow {
+        val ref = realtimeDb.child("users").child(userId).child("friends")
+        val listener = object : com.google.firebase.database.ValueEventListener {
+            override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                val friends = snapshot.children.mapNotNull { it.getValue(Friend::class.java) }
+                trySend(friends)
+                
+                // Keep local DB in sync
+                @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
+                kotlinx.coroutines.GlobalScope.launch {
+                    friends.forEach { db.friendDao().insertFriend(it) }
+                }
+            }
+            override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                close(error.toException())
+            }
+        }
+        ref.addValueEventListener(listener)
+        awaitClose { ref.removeEventListener(listener) }
+    }
 }

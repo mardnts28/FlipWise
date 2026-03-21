@@ -7,6 +7,8 @@ import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.text.PDFTextStripper
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.util.zip.ZipInputStream
+import java.util.regex.Pattern
 
 class FileTextExtractor(private val context: Context) {
 
@@ -27,21 +29,23 @@ class FileTextExtractor(private val context: Context) {
                     extractFromTxt(uri)
                 }
                 mimeType.contains("wordprocessingml") || 
-                mimeType.contains("msword") ||
-                fileName.endsWith(".doc", true) || 
                 fileName.endsWith(".docx", true) -> {
-                    // For DOC/DOCX, read as best-effort plain text
-                    extractFromTxt(uri)
+                    extractFromDocx(uri)
                 }
                 mimeType.contains("presentationml") || 
-                mimeType.contains("powerpoint") ||
-                fileName.endsWith(".ppt", true) || 
                 fileName.endsWith(".pptx", true) -> {
-                    // For PPT/PPTX, read as best-effort plain text
-                    extractFromTxt(uri)
+                    extractFromPptx(uri)
+                }
+                mimeType.contains("msword") ||
+                fileName.endsWith(".doc", true) -> {
+                    return Result.failure(Exception("Older Binary Word (.doc) files are not supported. Please save as .docx or .pdf."))
+                }
+                mimeType.contains("powerpoint") ||
+                fileName.endsWith(".ppt", true) -> {
+                    return Result.failure(Exception("Older Binary PowerPoint (.ppt) files are not supported. Please save as .pptx or .pdf."))
                 }
                 else -> {
-                    // Try plain text as fallback
+                    // Try plain text as fallback for actual text files
                     extractFromTxt(uri)
                 }
             }
@@ -80,6 +84,58 @@ class FileTextExtractor(private val context: Context) {
                 reader.readText()
             }
         }
+    }
+
+    private fun extractFromDocx(uri: Uri): String {
+        val inputStream = context.contentResolver.openInputStream(uri) ?: throw Exception("Cannot open file")
+        val textBuilder = StringBuilder()
+        
+        ZipInputStream(inputStream).use { zipStream ->
+            var entry = zipStream.nextEntry
+            while (entry != null) {
+                if (entry.name == "word/document.xml") {
+                    val content = BufferedReader(InputStreamReader(zipStream)).readText()
+                    textBuilder.append(stripXmlTags(content))
+                }
+                entry = zipStream.nextEntry
+            }
+        }
+        return textBuilder.toString()
+    }
+
+    private fun extractFromPptx(uri: Uri): String {
+        val inputStream = context.contentResolver.openInputStream(uri) ?: throw Exception("Cannot open file")
+        val textBuilder = StringBuilder()
+        
+        ZipInputStream(inputStream).use { zipStream ->
+            var entry = zipStream.nextEntry
+            while (entry != null) {
+                // PPTX stores text in slides/slide1.xml, slide2.xml...
+                if (entry.name.startsWith("ppt/slides/slide") && entry.name.endsWith(".xml")) {
+                    val content = BufferedReader(InputStreamReader(zipStream)).readText()
+                    textBuilder.append(stripXmlTags(content)).append("\n---\n")
+                }
+                entry = zipStream.nextEntry
+            }
+        }
+        return textBuilder.toString()
+    }
+
+    private fun stripXmlTags(xml: String): String {
+        // Regex to match anything between < and >
+        val htmlTagPattern = Pattern.compile("<[^>]*>")
+        val matcher = htmlTagPattern.matcher(xml)
+        val plainText = matcher.replaceAll(" ")
+        
+        // Clean up multi-whitespace and common XML entity references
+        return plainText
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"")
+            .replace("&apos;", "'")
+            .replace(Regex("\\s+"), " ")
+            .trim()
     }
 
     private fun getFileName(uri: Uri): String {

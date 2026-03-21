@@ -136,14 +136,18 @@ fun CompleteProfileScreen(
                                 isLoading = true
                                 scope.launch {
                                     val profile = profileViewModel.userProfile.value
-                                    profileViewModel.updateProfile(
+                                    val result = profileViewModel.updateProfile(
                                         displayName = profile.displayName,
                                         username = nickname,
                                         bio = profile.bio,
                                         avatar = profile.avatar
                                     )
                                     isLoading = false
-                                    onComplete()
+                                    if (result.isSuccess) {
+                                        onComplete()
+                                    } else {
+                                        error = "Failed to save profile: ${result.exceptionOrNull()?.message}"
+                                    }
                                 }
                             }
                         },

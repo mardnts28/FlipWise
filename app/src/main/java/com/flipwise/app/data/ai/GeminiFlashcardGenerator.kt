@@ -14,7 +14,7 @@ class GeminiFlashcardGenerator {
 
     private val model by lazy {
         GenerativeModel(
-            modelName = "gemini-2.0-flash",
+            modelName = "gemini-1.5-flash", // Use 1.5 Flash for better compatibility with 0.9.0 SDK
             apiKey = BuildConfig.GEMINI_API_KEY
         )
     }
@@ -45,45 +45,52 @@ $safeText
             """.trimIndent()
 
             val response = model.generateContent(prompt)
-            val responseText = response.text?.trim() ?: return Result.failure(Exception("AI returned an empty response"))
+            val responseText = response.text?.trim() ?: return Result.failure(Exception("AI returned an empty response. This might be due to safety filters blocking the content."))
 
             val cards = parseResponse(responseText)
             if (cards.isEmpty()) {
-                Result.failure(Exception("Could not generate flashcards from the provided content"))
+                // If parsing fails, maybe the response was just not in JSON format
+                Result.failure(Exception("AI generated content but it couldn't be parsed into flashcards. Please try again with a different part of the text."))
             } else {
                 Result.success(cards)
             }
         } catch (e: Exception) {
-            Result.failure(Exception("AI generation failed: ${e.message}"))
+            Result.failure(Exception("AI connection failed: ${e.localizedMessage}. Please check your internet connection and API key."))
         }
     }
 
     private fun parseResponse(responseText: String): List<GeneratedCard> {
-        return try {
-            // Clean the response - remove markdown code block markers if present
-            val cleaned = responseText
-                .removePrefix("```json")
-                .removePrefix("```")
-                .removeSuffix("```")
-                .trim()
-
+        // Step 1: Try direct parsing if it's clean JSON
+        try {
             val type = object : TypeToken<List<GeneratedCard>>() {}.type
-            Gson().fromJson<List<GeneratedCard>>(cleaned, type) ?: emptyList()
-        } catch (e: Exception) {
-            // Try to extract JSON array from the response as a fallback
-            try {
-                val jsonStart = responseText.indexOf('[')
-                val jsonEnd = responseText.lastIndexOf(']')
-                if (jsonStart != -1 && jsonEnd != -1 && jsonEnd > jsonStart) {
-                    val jsonStr = responseText.substring(jsonStart, jsonEnd + 1)
-                    val type = object : TypeToken<List<GeneratedCard>>() {}.type
-                    Gson().fromJson<List<GeneratedCard>>(jsonStr, type) ?: emptyList()
-                } else {
-                    emptyList()
-                }
-            } catch (e2: Exception) {
+            val result: List<GeneratedCard>? = Gson().fromJson(responseText, type)
+            if (result != null) return result
+        } catch (e: Exception) { /* Continue to fallback */ }
+
+        // Step 2: Try cleaning markdown code blocks
+        try {
+            val cleaned = responseText
+                .replace("```json", "")
+                .replace("```", "")
+                .trim()
+            val type = object : TypeToken<List<GeneratedCard>>() {}.type
+            val result: List<GeneratedCard>? = Gson().fromJson(cleaned, type)
+            if (result != null) return result
+        } catch (e: Exception) { /* Continue to fallback */ }
+
+        // Step 3: Extract anything between the first [ and last ]
+        return try {
+            val jsonStart = responseText.indexOf('[')
+            val jsonEnd = responseText.lastIndexOf(']')
+            if (jsonStart != -1 && jsonEnd != -1 && jsonEnd > jsonStart) {
+                val jsonStr = responseText.substring(jsonStart, jsonEnd + 1)
+                val type = object : TypeToken<List<GeneratedCard>>() {}.type
+                Gson().fromJson(jsonStr, type) ?: emptyList()
+            } else {
                 emptyList()
             }
+        } catch (e: Exception) {
+            emptyList()
         }
     }
 
