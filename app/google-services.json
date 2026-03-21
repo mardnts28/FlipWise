@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "307290224469",
+    "firebase_url": "https://flipwise-dc052-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "flipwise-dc052",
+    "storage_bucket": "flipwise-dc052.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:307290224469:android:e7b4fb2a4ddd82893f21dc",
+        "android_client_info": {
+          "package_name": "com.flipwise.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "307290224469-qg4mpt5nk8304nsefea9a4n3ufec00hc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.flipwise.app",
+            "certificate_hash": "4e0ba8a2414068cdf8d2c2d8a03bb619114fada7"
+          }
+        },
+        {
+          "client_id": "307290224469-gf0osk7odpkmvuo3t8tmbfhh1s8b6am3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBUpVBuIRHbMIAfDMxpX6C_EKhp_Da_pLQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "307290224469-gf0osk7odpkmvuo3t8tmbfhh1s8b6am3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

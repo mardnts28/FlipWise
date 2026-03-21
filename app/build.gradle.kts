@@ -1,9 +1,18 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("kotlin-kapt")
     id("kotlin-parcelize")
+    alias(libs.plugins.google.services)
+}
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(localPropertiesFile.inputStream())
 }
 
 android {
@@ -21,6 +30,8 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        buildConfigField("String", "GEMINI_API_KEY", "\"${localProperties.getProperty("GEMINI_API_KEY", "")}\"")
     }
 
     buildTypes {
@@ -42,6 +53,7 @@ android {
     buildFeatures {
         viewBinding = true
         compose = true
+        buildConfig = true
     }
 
     packaging {
@@ -63,6 +75,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.activity.compose)
 
     implementation(libs.androidx.navigation.compose)
@@ -78,6 +92,20 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
+    // Gemini AI
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+
+    // PDF text extraction
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.database)
+    implementation(libs.firebase.auth)
+    implementation(libs.play.services.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.kotlinx.coroutines.play.services)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -85,4 +113,8 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    // SQLCipher for database encryption
+    implementation("net.zetetic:android-database-sqlcipher:4.5.3")
+    implementation("androidx.sqlite:sqlite-ktx:2.4.0")
 }

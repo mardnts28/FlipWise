@@ -71,8 +71,8 @@ data class UserStats(
 @Entity(tableName = "user_profile")
 data class UserProfile(
     @PrimaryKey val id: String = "local_user",
-    val username: String = "flipper",
-    val displayName: String = "FlipWise User",
+    val username: String = "",
+    val displayName: String = "",
     val avatar: String = "🎓",
     val bio: String = "Learning every day!",
     val joinedAt: Long = System.currentTimeMillis(),
@@ -112,3 +112,10 @@ data class Challenge(
     val createdBy: String,
     val participants: String
 ) : Parcelable
+
+sealed class AiGenerationState {
+    data object Idle : AiGenerationState()
+    data class Loading(val message: String) : AiGenerationState()
+    data class Success(val cardsGenerated: Int) : AiGenerationState()
+    data class Error(val message: String) : AiGenerationState()
+}

@@ -1,0 +1,784 @@
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+index b79ae2f..87c20d2 100644
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -4,6 +4,7 @@ plugins {
+     alias(libs.plugins.kotlin.compose)
+     id("kotlin-kapt")
+     id("kotlin-parcelize")
++    alias(libs.plugins.google.services)
+ }
+ 
+ android {
+@@ -11,7 +12,7 @@ android {
+     compileSdk = 35
+ 
+     defaultConfig {
+-        applicationId = "com.flipwise.app"
++        applicationId = "com.flipwise.app" 
+         minSdk = 24
+         targetSdk = 35
+         versionCode = 1
+@@ -63,6 +64,8 @@ dependencies {
+     implementation(libs.androidx.compose.ui.tooling.preview)
+     implementation(libs.androidx.compose.material3)
+     implementation(libs.androidx.compose.material.icons.extended)
++    implementation(libs.androidx.compose.foundation)
++    implementation(libs.androidx.compose.foundation.layout)
+     implementation(libs.androidx.activity.compose)
+ 
+     implementation(libs.androidx.navigation.compose)
+@@ -78,6 +81,14 @@ dependencies {
+     implementation("androidx.datastore:datastore-preferences:1.0.0")
+     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+ 
++    // Firebase
++    implementation(platform(libs.firebase.bom))
++    implementation(libs.firebase.database)
++    implementation(libs.firebase.auth)
++    implementation(libs.play.services.auth)
++    implementation(libs.firebase.firestore)
++    implementation(libs.kotlinx.coroutines.play.services)
++
+     testImplementation(libs.junit)
+     androidTestImplementation(libs.androidx.junit)
+     androidTestImplementation(libs.androidx.espresso.core)
+diff --git a/app/src/main/java/com/flipwise/app/MainActivity.kt b/app/src/main/java/com/flipwise/app/MainActivity.kt
+index c2edb92..43e9437 100644
+--- a/app/src/main/java/com/flipwise/app/MainActivity.kt
++++ b/app/src/main/java/com/flipwise/app/MainActivity.kt
+@@ -14,9 +14,20 @@ import com.flipwise.app.ui.navigation.AppNavigation
+ import com.flipwise.app.ui.navigation.Screen
+ import com.flipwise.app.ui.theme.FlipWiseTheme
+ 
++import com.google.firebase.FirebaseApp
++import android.util.Log
++
+ class MainActivity : ComponentActivity() {
+     override fun onCreate(savedInstanceState: Bundle?) {
+         super.onCreate(savedInstanceState)
++        
++        try {
++            FirebaseApp.initializeApp(this)
++            Log.d("Firebase", "Firebase initialized successfully")
++        } catch (e: Exception) {
++            Log.e("Firebase", "Firebase initialization failed", e)
++        }
++
+         setContent {
+             FlipWiseTheme {
+                 val navController = rememberNavController()
+@@ -28,7 +39,8 @@ class MainActivity : ComponentActivity() {
+                     Screen.DeckList.route,
+                     Screen.Achievements.route,
+                     Screen.StudyTracker.route,
+-                    Screen.Profile.route
++                    Screen.Profile.route,
++                    Screen.Leaderboard.route
+                 )
+                 val showBottomBar = currentRoute in bottomNavRoutes
+ 
+diff --git a/app/src/main/java/com/flipwise/app/ui/components/BottomNavigation.kt b/app/src/main/java/com/flipwise/app/ui/components/BottomNavigation.kt
+index 41b6d2a..b66f695 100644
+--- a/app/src/main/java/com/flipwise/app/ui/components/BottomNavigation.kt
++++ b/app/src/main/java/com/flipwise/app/ui/components/BottomNavigation.kt
+@@ -18,9 +18,9 @@ sealed class BottomNavItem(
+ ) {
+     object Home    : BottomNavItem(Screen.Home.route,         Icons.Default.Home,                "Home")
+     object Decks   : BottomNavItem(Screen.DeckList.route,     Icons.Default.CollectionsBookmark, "Decks")
+-    object Awards  : BottomNavItem(Screen.Achievements.route, Icons.Default.EmojiEvents,         "Awards")
+-    object Tracker : BottomNavItem(Screen.StudyTracker.route, Icons.Default.BarChart,            "Tracker")
+-    object Profile : BottomNavItem(Screen.Profile.route,      Icons.Default.Person,              "Profile")
++    object Tracker     : BottomNavItem(Screen.StudyTracker.route, Icons.Default.BarChart,            "Tracker")
++    object Leaderboard : BottomNavItem(Screen.Leaderboard.route,  Icons.Default.MilitaryTech,        "Global")
++    object Profile     : BottomNavItem(Screen.Profile.route,      Icons.Default.Person,              "Profile")
+ }
+ 
+ @Composable
+@@ -28,7 +28,7 @@ fun BottomNavigationBar(navController: NavController) {
+     val items = listOf(
+         BottomNavItem.Home,
+         BottomNavItem.Decks,
+-        BottomNavItem.Awards,
++        BottomNavItem.Leaderboard,
+         BottomNavItem.Tracker,
+         BottomNavItem.Profile
+     )
+diff --git a/app/src/main/java/com/flipwise/app/ui/components/CreateDeckDialog.kt b/app/src/main/java/com/flipwise/app/ui/components/CreateDeckDialog.kt
+index ffc2939..a39b1aa 100644
+--- a/app/src/main/java/com/flipwise/app/ui/components/CreateDeckDialog.kt
++++ b/app/src/main/java/com/flipwise/app/ui/components/CreateDeckDialog.kt
+@@ -25,7 +25,7 @@ import androidx.core.graphics.toColorInt
+ @Composable
+ fun CreateDeckDialog(
+     onDismiss: () -> Unit,
+-    onCreate: (String, String, String, String) -> Unit
++    onDeckCreate: (name: String, subject: String, color: String, icon: String) -> Unit
+ ) {
+     var name by remember { mutableStateOf("") }
+     var subject by remember { mutableStateOf("") }
+@@ -159,7 +159,7 @@ fun CreateDeckDialog(
+ 
+                 // Action Button
+                 Button(
+-                    onClick = { onCreate(name, subject, selectedColor, defaultIcon) },
++                    onClick = { onDeckCreate(name, subject, selectedColor, defaultIcon) },
+                     modifier = Modifier
+                         .fillMaxWidth()
+                         .height(56.dp),
+diff --git a/app/src/main/java/com/flipwise/app/ui/navigation/Navigation.kt b/app/src/main/java/com/flipwise/app/ui/navigation/Navigation.kt
+index c45d69b..9976d65 100644
+--- a/app/src/main/java/com/flipwise/app/ui/navigation/Navigation.kt
++++ b/app/src/main/java/com/flipwise/app/ui/navigation/Navigation.kt
+@@ -17,6 +17,10 @@ sealed class Screen(val route: String) {
+     object Profile      : Screen("profile")
+     object Login        : Screen("login")
+     object Register     : Screen("register")
++    object RegisterSuccess : Screen("register_success/{email}") {
++        fun createRoute(email: String) = "register_success/$email"
++    }
++    object Leaderboard  : Screen("leaderboard")
+     object DeckDetail   : Screen("deck/{deckId}") {
+         fun createRoute(deckId: String) = "deck/$deckId"
+     }
+@@ -54,14 +58,29 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
+         composable(Screen.Register.route) {
+             RegisterScreen(
+                 onNavigateToLogin = { navController.navigate(Screen.Login.route) },
+-                onRegisterSuccess = {
+-                    navController.navigate(Screen.Home.route) {
++                onRegisterSuccess = { email ->
++                    navController.navigate(Screen.RegisterSuccess.createRoute(email)) {
+                         popUpTo(Screen.Register.route) { inclusive = true }
+                     }
+                 }
+             )
+         }
+ 
++        composable(
++            route = Screen.RegisterSuccess.route,
++            arguments = listOf(navArgument("email") { type = NavType.StringType })
++        ) { backStackEntry ->
++            val email = backStackEntry.arguments?.getString("email") ?: ""
++            RegisterSuccessScreen(
++                email = email,
++                onContinueToLogin = {
++                    navController.navigate(Screen.Login.route) {
++                        popUpTo(Screen.RegisterSuccess.route) { inclusive = true }
++                    }
++                }
++            )
++        }
++
+         composable(Screen.Onboarding.route) {
+             OnboardingScreen(onComplete = {
+                 navController.navigate(Screen.Home.route) {
+@@ -140,5 +159,9 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
+         composable(Screen.Profile.route) {
+             ProfileScreen(onNavigateBack = { navController.popBackStack() })
+         }
++
++        composable(Screen.Leaderboard.route) {
++            LeaderboardScreen(onBack = { navController.popBackStack() })
++        }
+     }
+ }
+diff --git a/app/src/main/java/com/flipwise/app/ui/screens/DeckListScreen.kt b/app/src/main/java/com/flipwise/app/ui/screens/DeckListScreen.kt
+index 9a284ac..b9b750d 100644
+--- a/app/src/main/java/com/flipwise/app/ui/screens/DeckListScreen.kt
++++ b/app/src/main/java/com/flipwise/app/ui/screens/DeckListScreen.kt
+@@ -89,7 +89,7 @@ fun DeckListScreen(
+     if (showCreateDialog) {
+         CreateDeckDialog(
+             onDismiss = { showCreateDialog = false },
+-            onCreate = { name, subject, color, icon ->
++            onDeckCreate = { name: String, subject: String, color: String, icon: String ->
+                 viewModel.createDeck(name, subject, color, icon)
+                 showCreateDialog = false
+             }
+diff --git a/app/src/main/java/com/flipwise/app/ui/screens/HomeScreen.kt b/app/src/main/java/com/flipwise/app/ui/screens/HomeScreen.kt
+index dd833d5..5baf7e7 100644
+--- a/app/src/main/java/com/flipwise/app/ui/screens/HomeScreen.kt
++++ b/app/src/main/java/com/flipwise/app/ui/screens/HomeScreen.kt
+@@ -229,7 +229,7 @@ fun HomeScreen(
+     if (showCreateDialog) {
+         com.flipwise.app.ui.components.CreateDeckDialog(
+             onDismiss = { showCreateDialog = false },
+-            onCreate = { name, subject, color, icon ->
++            onDeckCreate = { name: String, subject: String, color: String, icon: String ->
+                 viewModel.createDeck(name, subject, color, icon)
+                 showCreateDialog = false
+             }
+diff --git a/app/src/main/java/com/flipwise/app/ui/screens/LoginScreen.kt b/app/src/main/java/com/flipwise/app/ui/screens/LoginScreen.kt
+index d53df0e..3c0bb38 100644
+--- a/app/src/main/java/com/flipwise/app/ui/screens/LoginScreen.kt
++++ b/app/src/main/java/com/flipwise/app/ui/screens/LoginScreen.kt
+@@ -1,5 +1,12 @@
+ package com.flipwise.app.ui.screens
+ 
++import kotlinx.coroutines.launch
++import androidx.activity.compose.rememberLauncherForActivityResult
++import androidx.activity.result.contract.ActivityResultContracts
++import com.google.android.gms.auth.api.signin.GoogleSignIn
++import com.google.android.gms.auth.api.signin.GoogleSignInOptions
++import com.google.android.gms.common.api.ApiException
++
+ import androidx.compose.animation.*
+ import androidx.compose.animation.core.*
+ import androidx.compose.foundation.BorderStroke
+@@ -11,18 +18,19 @@ import androidx.compose.foundation.shape.CircleShape
+ import androidx.compose.foundation.shape.RoundedCornerShape
+ import androidx.compose.foundation.verticalScroll
+ import androidx.compose.material.icons.Icons
++import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+ import androidx.compose.material.icons.rounded.*
+ import androidx.compose.material3.*
+ import androidx.compose.runtime.*
+ import androidx.compose.ui.Alignment
+ import androidx.compose.ui.Modifier
+-import androidx.compose.ui.draw.blur
+ import androidx.compose.ui.draw.clip
++import androidx.compose.ui.focus.FocusDirection
+ import androidx.compose.ui.graphics.Brush
+ import androidx.compose.ui.graphics.Color
++import androidx.compose.ui.platform.LocalFocusManager
+ import androidx.compose.ui.text.font.FontWeight
+ import androidx.compose.ui.text.input.KeyboardType
+-import androidx.compose.ui.text.style.TextAlign
+ import androidx.compose.ui.text.style.TextDecoration
+ import androidx.compose.ui.unit.dp
+ import androidx.compose.ui.unit.sp
+@@ -42,6 +50,10 @@ fun LoginScreen(
+     var password by remember { mutableStateOf("") }
+     var showPassword by remember { mutableStateOf(false) }
+     var error by remember { mutableStateOf<String?>(null) }
++    var isLoading by remember { mutableStateOf(false) }
++    val scope = rememberCoroutineScope()
++    
++    val focusManager = LocalFocusManager.current
+ 
+     val infiniteTransition = rememberInfiniteTransition(label = "background")
+     
+@@ -73,7 +85,6 @@ fun LoginScreen(
+             modifier = Modifier
+                 .offset(x = 200.dp, y = (-100).dp)
+                 .size(400.dp)
+-                .blur(80.dp)
+                 .background(GrapePop.copy(alpha = 0.2f * blob1Pos), CircleShape)
+         )
+         Box(
+@@ -81,7 +92,6 @@ fun LoginScreen(
+                 .align(Alignment.BottomStart)
+                 .offset(x = (-100).dp, y = 100.dp)
+                 .size(400.dp)
+-                .blur(80.dp)
+                 .background(CoralZest.copy(alpha = 0.2f), CircleShape)
+         )
+ 
+@@ -238,23 +248,40 @@ fun LoginScreen(
+                             leadingIcon = Icons.Rounded.Lock,
+                             isPassword = true,
+                             showPassword = showPassword,
+-                            onPasswordToggle = { showPassword = !showPassword }
++                            onPasswordToggle = { showPassword = !showPassword },
++                            keyboardType = KeyboardType.Password
+                         )
+                     }
+ 
++
+                     // Submit Button
+                     Button(
+                         onClick = {
++                            focusManager.clearFocus()
+                             if (email.isBlank() || password.isBlank()) {
+                                 error = "Please fill in all fields"
+                             } else if (!email.contains("@")) {
+                                 error = "Please enter a valid email"
+                             } else {
+-                                // Update profile with login info
+-                                profileViewModel.loginOrRegister("", email)
+-                                onLoginSuccess()
++                                isLoading = true
++                                error = null
++                                scope.launch {
++                                    val result = profileViewModel.signIn(email, password)
++                                    isLoading = false
++                                    if (result.isSuccess) {
++                                        onLoginSuccess()
++                                    } else {
++                                        val ex = result.exceptionOrNull()
++                                        error = when (ex) {
++                                            is com.google.firebase.auth.FirebaseAuthInvalidUserException -> "This account does not exist in our system."
++                                            is com.google.firebase.auth.FirebaseAuthInvalidCredentialsException -> "The email address or password provided is incorrect."
++                                            else -> result.exceptionOrNull()?.message ?: "Login failed"
++                                        }
++                                    }
++                                }
+                             }
+                         },
++                        enabled = !isLoading,
+                         modifier = Modifier
+                             .fillMaxWidth()
+                             .height(64.dp),
+@@ -286,7 +313,7 @@ fun LoginScreen(
+                                 )
+                                 Spacer(modifier = Modifier.width(8.dp))
+                                 Icon(
+-                                    imageVector = Icons.Rounded.ArrowForward,
++                                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                                     contentDescription = null,
+                                     tint = Color.White,
+                                     modifier = Modifier.size(20.dp)
+@@ -294,6 +321,51 @@ fun LoginScreen(
+                             }
+                         }
+                     }
++
++                    // --- Google One-Tap Sign-In ---
++                    val context = androidx.compose.ui.platform.LocalContext.current
++                    val googleLauncher = rememberLauncherForActivityResult(
++                        contract = ActivityResultContracts.StartActivityForResult()
++                    ) { result ->
++                        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
++                        try {
++                            val account = task.getResult(ApiException::class.java)
++                            account.idToken?.let { token ->
++                                scope.launch {
++                                    isLoading = true
++                                    val signInResult = profileViewModel.signInWithGoogle(token)
++                                    isLoading = false
++                                    if (signInResult.isSuccess) onLoginSuccess()
++                                    else error = "Google Sign-In failed"
++                                }
++                            }
++                        } catch (e: Exception) {
++                            error = "Google Error: ${e.message}"
++                        }
++                    }
++
++                    Spacer(modifier = Modifier.height(8.dp))
++                    
++                    OutlinedButton(
++                        onClick = {
++                            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
++                                .requestIdToken("307290224469-gf0osk7odpkmvuo3t8tmbfhh1s8b6am3.apps.googleusercontent.com")
++                                .requestEmail()
++                                .build()
++                            val client = GoogleSignIn.getClient(context, gso)
++                            googleLauncher.launch(client.signInIntent)
++                        },
++                        modifier = Modifier.fillMaxWidth().height(56.dp),
++                        shape = RoundedCornerShape(20.dp),
++                        border = BorderStroke(1.dp, NavyInk.copy(alpha = 0.1f)),
++                        colors = ButtonDefaults.outlinedButtonColors(contentColor = NavyInk)
++                    ) {
++                        Row(verticalAlignment = Alignment.CenterVertically) {
++                            Text("G", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = Color(0xFF4285F4))
++                            Spacer(Modifier.width(12.dp))
++                            Text("Sign in with Google", fontWeight = FontWeight.Bold)
++                        }
++                    }
+                 }
+             }
+ 
+diff --git a/app/src/main/java/com/flipwise/app/ui/screens/RegisterScreen.kt b/app/src/main/java/com/flipwise/app/ui/screens/RegisterScreen.kt
+index 27e1636..ef48a8d 100644
+--- a/app/src/main/java/com/flipwise/app/ui/screens/RegisterScreen.kt
++++ b/app/src/main/java/com/flipwise/app/ui/screens/RegisterScreen.kt
+@@ -1,5 +1,7 @@
+ package com.flipwise.app.ui.screens
+ 
++import kotlinx.coroutines.launch
++
+ import androidx.compose.animation.*
+ import androidx.compose.animation.core.*
+ import androidx.compose.foundation.BorderStroke
+@@ -11,12 +13,12 @@ import androidx.compose.foundation.shape.CircleShape
+ import androidx.compose.foundation.shape.RoundedCornerShape
+ import androidx.compose.foundation.verticalScroll
+ import androidx.compose.material.icons.Icons
++import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+ import androidx.compose.material.icons.rounded.*
+ import androidx.compose.material3.*
+ import androidx.compose.runtime.*
+ import androidx.compose.ui.Alignment
+ import androidx.compose.ui.Modifier
+-import androidx.compose.ui.draw.blur
+ import androidx.compose.ui.draw.clip
+ import androidx.compose.ui.graphics.Brush
+ import androidx.compose.ui.graphics.Color
+@@ -34,7 +36,7 @@ import com.flipwise.app.viewmodel.ProfileViewModel
+ @Composable
+ fun RegisterScreen(
+     onNavigateToLogin: () -> Unit,
+-    onRegisterSuccess: () -> Unit,
++    onRegisterSuccess: (String) -> Unit,
+     profileViewModel: ProfileViewModel = viewModel()
+ ) {
+     var fullName by remember { mutableStateOf("") }
+@@ -45,6 +47,8 @@ fun RegisterScreen(
+     var showPassword by remember { mutableStateOf(false) }
+     var showConfirmPassword by remember { mutableStateOf(false) }
+     var error by remember { mutableStateOf<String?>(null) }
++    var isLoading by remember { mutableStateOf(false) }
++    val scope = rememberCoroutineScope()
+ 
+     val infiniteTransition = rememberInfiniteTransition(label = "background")
+     
+@@ -76,7 +80,6 @@ fun RegisterScreen(
+             modifier = Modifier
+                 .offset(x = 200.dp, y = (-100).dp)
+                 .size(400.dp)
+-                .blur(80.dp)
+                 .background(GrapePop.copy(alpha = 0.2f * blob1Pos), CircleShape)
+         )
+         Box(
+@@ -84,7 +87,6 @@ fun RegisterScreen(
+                 .align(Alignment.BottomStart)
+                 .offset(x = (-100).dp, y = 100.dp)
+                 .size(400.dp)
+-                .blur(80.dp)
+                 .background(CoralZest.copy(alpha = 0.2f), CircleShape)
+         )
+ 
+@@ -131,8 +133,7 @@ fun RegisterScreen(
+                         .offset(x = (-10).dp, y = 10.dp)
+                         .background(
+                             Brush.linearGradient(listOf(GrapePop, Color(0xFF9333EA))),
+-                            CircleShape
+-                        )
++                            CircleShape)
+                         .padding(8.dp)
+                 ) {
+                     Icon(
+@@ -299,6 +300,7 @@ fun RegisterScreen(
+                         )
+                     }
+ 
++
+                     // Submit Button
+                     Button(
+                         onClick = {
+@@ -311,10 +313,28 @@ fun RegisterScreen(
+                             } else if (password != confirmPassword) {
+                                 error = "Passwords do not match"
+                             } else {
+-                                profileViewModel.loginOrRegister(displayUsername, fullName)
+-                                onRegisterSuccess()
++                                isLoading = true
++                                error = null
++                                scope.launch {
++                                    val result = profileViewModel.signUp(email, password)
++                                    if (result.isSuccess) {
++                                        profileViewModel.register(displayUsername, fullName)
++                                        profileViewModel.signOut() // Sign out to force login
++                                        isLoading = false
++                                        onRegisterSuccess(email)
++                                    } else {
++                                        isLoading = false
++                                        val ex = result.exceptionOrNull()
++                                        error = when (ex) {
++                                            is com.google.firebase.auth.FirebaseAuthUserCollisionException -> "This email address is already associated with an account."
++                                            is com.google.firebase.auth.FirebaseAuthWeakPasswordException -> "Password must be at least 6 characters long."
++                                            else -> "Registration failed. Please try again later."
++                                        }
++                                    }
++                                }
+                             }
+                         },
++                        enabled = !isLoading,
+                         modifier = Modifier
+                             .fillMaxWidth()
+                             .height(64.dp),
+@@ -346,7 +366,7 @@ fun RegisterScreen(
+                                 )
+                                 Spacer(modifier = Modifier.width(8.dp))
+                                 Icon(
+-                                    imageVector = Icons.Rounded.ArrowForward,
++                                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                                     contentDescription = null,
+                                     tint = Color.White,
+                                     modifier = Modifier.size(20.dp)
+diff --git a/app/src/main/java/com/flipwise/app/ui/theme/Color.kt b/app/src/main/java/com/flipwise/app/ui/theme/Color.kt
+index 2493471..9711801 100644
+--- a/app/src/main/java/com/flipwise/app/ui/theme/Color.kt
++++ b/app/src/main/java/com/flipwise/app/ui/theme/Color.kt
+@@ -11,4 +11,5 @@ val GhostWhite = Color(0xFFFAFAF9)
+ val CherryRed  = Color(0xFFF43F5E)
+ val GrapePop80 = Color(0xCC7C3AED)
+ val GrapePop20 = Color(0x337C3AED)
++val GrapePopDark = Color(0xFF5B21B6)
+ val NavyInk60  = Color(0x991E1B4B)
+\ No newline at end of file
+diff --git a/app/src/main/java/com/flipwise/app/viewmodel/DeckViewModel.kt b/app/src/main/java/com/flipwise/app/viewmodel/DeckViewModel.kt
+index c2e0dd0..ba6bf10 100644
+--- a/app/src/main/java/com/flipwise/app/viewmodel/DeckViewModel.kt
++++ b/app/src/main/java/com/flipwise/app/viewmodel/DeckViewModel.kt
+@@ -9,17 +9,19 @@ import kotlinx.coroutines.flow.*
+ import kotlinx.coroutines.launch
+ import java.util.*
+ 
++import com.flipwise.app.data.repository.FlipWiseRepository
++
+ class DeckViewModel(application: Application) : AndroidViewModel(application) {
+-    private val db             = AppDatabase.getDatabase(application)
+-    private val deckDao        = db.deckDao()
+-    private val flashcardDao   = db.flashcardDao()
+-    private val sessionDao     = db.studySessionDao()
++    private val repository = FlipWiseRepository(application)
++    private val db = AppDatabase.getDatabase(application)
++    private val deckDao = db.deckDao()
++    private val cardDao = db.flashcardDao()
+     private val achievementDao = db.achievementDao()
+-    private val profileDao     = db.profileDao()
++    private val sessionDao = db.studySessionDao()
+ 
+-    val decks: Flow<List<Deck>>               = deckDao.getAllDecks()
+-    val achievements: Flow<List<Achievement>> = achievementDao.getAllAchievements()
+-    val sessions: Flow<List<StudySession>>    = sessionDao.getAllSessions()
++    val decks: Flow<List<Deck>>               = repository.allDecks
++    val achievements: Flow<List<Achievement>> = AppDatabase.getDatabase(application).achievementDao().getAllAchievements()
++    val sessions: Flow<List<StudySession>>    = repository.sessions
+ 
+     private val _userProgress = MutableStateFlow(UserProgress())
+     val userProgress: StateFlow<UserProgress> = _userProgress.asStateFlow()
+@@ -149,12 +151,11 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
+     }
+ 
+     // ─── Decks ───────────────────────────────────────────────────
+-
+-    fun getCardsForDeck(deckId: String) = flashcardDao.getCardsByDeck(deckId)
++    fun getCardsForDeck(deckId: String) = repository.getCardsForDeck(deckId)
+ 
+     fun createDeck(name: String, subject: String, color: String, icon: String) {
+         viewModelScope.launch {
+-            deckDao.insertDeck(
++            repository.createDeck(
+                 Deck(id = UUID.randomUUID().toString(), name = name, subject = subject, color = color, icon = icon)
+             )
+         }
+@@ -162,8 +163,7 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
+ 
+     fun deleteDeck(deckId: String) {
+         viewModelScope.launch {
+-            flashcardDao.deleteCardsByDeck(deckId)
+-            deckDao.deleteDeckById(deckId)
++            repository.deleteDeck(deckId)
+         }
+     }
+ 
+@@ -171,19 +171,15 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
+ 
+     fun addFlashcard(deckId: String, front: String, back: String) {
+         viewModelScope.launch {
+-            flashcardDao.insertCard(
++            repository.addFlashcard(
+                 Flashcard(id = UUID.randomUUID().toString(), deckId = deckId, front = front, back = back)
+             )
+-            val count = flashcardDao.getCardCountForDeck(deckId)
+-            deckDao.getDeckById(deckId)?.let { deckDao.updateDeck(it.copy(cardCount = count)) }
+         }
+     }
+ 
+     fun deleteCard(card: Flashcard) {
+         viewModelScope.launch {
+-            flashcardDao.deleteCard(card)
+-            val count = flashcardDao.getCardCountForDeck(card.deckId)
+-            deckDao.getDeckById(card.deckId)?.let { deckDao.updateDeck(it.copy(cardCount = count)) }
++            repository.deleteFlashcard(card)
+         }
+     }
+ 
+@@ -192,7 +188,7 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
+     fun saveStudySession(deckId: String, cardsStudied: Int, correctCount: Int) {
+         val points = correctCount * 10 + (cardsStudied - correctCount) * 5
+         viewModelScope.launch {
+-            sessionDao.insertSession(
++            repository.saveSession(
+                 StudySession(
+                     deckId       = deckId,
+                     cardsStudied = cardsStudied,
+@@ -202,12 +198,12 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
+             )
+             
+             // Update User Profile with new XP and Points
+-            val currentProfile = profileDao.getUserProfile().firstOrNull() ?: UserProfile()
++            val currentProfile = repository.userProfile.firstOrNull() ?: UserProfile()
+             val newTotalPoints = currentProfile.totalPoints + points
+             val newXp = currentProfile.xp + points
+             val newLevel = (newXp / 500) + 1
+             
+-            profileDao.updateProfile(
++            repository.updateProfile(
+                 currentProfile.copy(
+                     totalPoints = newTotalPoints,
+                     xp = newXp,
+@@ -215,9 +211,11 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
+                 )
+             )
+ 
+-            deckDao.getDeckById(deckId)?.let { deck ->
+-                val newMastered = (deck.masteredCount + correctCount).coerceAtMost(deck.cardCount)
+-                deckDao.updateDeck(deck.copy(
++            // Update local and cloud deck stats
++            val deck = AppDatabase.getDatabase(getApplication()).deckDao().getDeckById(deckId)
++            deck?.let {
++                val newMastered = (it.masteredCount + correctCount).coerceAtMost(it.cardCount)
++                repository.updateDeck(it.copy(
+                     lastStudied = System.currentTimeMillis(),
+                     masteredCount = newMastered
+                 ))
+diff --git a/app/src/main/java/com/flipwise/app/viewmodel/ProfileViewModel.kt b/app/src/main/java/com/flipwise/app/viewmodel/ProfileViewModel.kt
+index 3859517..3097d7e 100644
+--- a/app/src/main/java/com/flipwise/app/viewmodel/ProfileViewModel.kt
++++ b/app/src/main/java/com/flipwise/app/viewmodel/ProfileViewModel.kt
+@@ -9,35 +9,45 @@ import kotlinx.coroutines.flow.*
+ import kotlinx.coroutines.launch
+ import java.util.*
+ 
++import com.flipwise.app.data.repository.FlipWiseRepository
++
+ class ProfileViewModel(application: Application) : AndroidViewModel(application) {
+-    private val db           = AppDatabase.getDatabase(application)
+-    private val profileDao   = db.profileDao()
+-    private val friendDao    = db.friendDao()
+-    private val challengeDao = db.challengeDao()
+-    private val sessionDao   = db.studySessionDao()
++    private val repository = FlipWiseRepository(application)
++    private val friendDao = AppDatabase.getDatabase(application).friendDao()
+ 
+-    val userProfile: StateFlow<UserProfile> = profileDao.getUserProfile()
++    val userProfile: StateFlow<UserProfile> = repository.userProfile
+         .map { it ?: UserProfile() }
+         .stateIn(viewModelScope, SharingStarted.Eagerly, UserProfile())
+ 
+-    val friends: Flow<List<Friend>>       = friendDao.getAllFriends()
+-    val challenges: Flow<List<Challenge>> = challengeDao.getAllChallenges()
+-    val recentSessions: Flow<List<StudySession>> = sessionDao.getAllSessions().map { it.take(5) }
++    val friends: Flow<List<Friend>>       = AppDatabase.getDatabase(application).friendDao().getAllFriends()
++    val challenges: Flow<List<Challenge>> = AppDatabase.getDatabase(application).challengeDao().getAllChallenges()
++    val recentSessions: Flow<List<StudySession>> = repository.sessions.map { it.take(5) }
++
++    private val _leaderboard = MutableStateFlow<List<UserProfile>>(emptyList())
++    val leaderboard: StateFlow<List<UserProfile>> = _leaderboard.asStateFlow()
++
++    val isUserLoggedIn: Boolean get() = repository.isUserLoggedIn()
+ 
+     init {
+         viewModelScope.launch {
+-            val profile = profileDao.getUserProfile().firstOrNull()
++            val profile = repository.userProfile.firstOrNull()
+             if (profile == null) {
+-                profileDao.insertProfile(UserProfile())
++                repository.updateProfile(UserProfile())
+             }
++            refreshLeaderboard()
++        }
++    }
++
++    fun refreshLeaderboard() {
++        viewModelScope.launch {
++            _leaderboard.value = repository.getLeaderboard()
+         }
+     }
+ 
+     fun updateProfile(displayName: String, username: String, bio: String, avatar: String) {
+         viewModelScope.launch {
+-            // Use current state to preserve fields like level, xp, etc.
+             val current = userProfile.value
+-            profileDao.insertProfile(
++            repository.updateProfile(
+                 current.copy(
+                     displayName = displayName, 
+                     username = username, 
+@@ -54,7 +64,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
+             val finalName = if (name.isNotBlank()) name else email.substringBefore("@")
+             val finalUsername = email.substringBefore("@")
+             
+-            profileDao.insertProfile(
++            repository.updateProfile(
+                 current.copy(
+                     displayName = finalName,
+                     username = finalUsername
+@@ -63,6 +73,32 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
+         }
+     }
+ 
++    suspend fun register(username: String, displayName: String) {
++        val current = userProfile.value
++        repository.updateProfile(
++            current.copy(
++                username = username,
++                displayName = displayName
++            )
++        )
++    }
++
++    suspend fun signIn(email: String, password: String): Result<Unit> {
++        return repository.signIn(email, password)
++    }
++
++    suspend fun signUp(email: String, password: String): Result<Unit> {
++        return repository.signUp(email, password)
++    }
++
++    suspend fun signInWithGoogle(idToken: String): Result<Unit> {
++        return repository.signInWithGoogle(idToken)
++    }
++
++    fun signOut() {
++        repository.signOut()
++    }
++
+     fun addFriend(username: String) {
+         if (username.isBlank()) return
+         viewModelScope.launch {
+diff --git a/build.gradle.kts b/build.gradle.kts
+index 952b930..5dc087f 100644
+--- a/build.gradle.kts
++++ b/build.gradle.kts
+@@ -3,4 +3,5 @@ plugins {
+     alias(libs.plugins.android.application) apply false
+     alias(libs.plugins.kotlin.android) apply false
+     alias(libs.plugins.kotlin.compose) apply false
++    alias(libs.plugins.google.services) apply false
+ }
+\ No newline at end of file
+diff --git a/gradle/libs.versions.toml b/gradle/libs.versions.toml
+index 6115949..9102fc4 100644
+--- a/gradle/libs.versions.toml
++++ b/gradle/libs.versions.toml
+@@ -10,6 +10,9 @@ activityCompose = "1.9.3"
+ composeBom = "2024.10.00"
+ room = "2.6.1"
+ navigation = "2.8.3"
++firebaseBom = "33.5.1"
++playServicesAuth = "21.2.0"
++googleServices = "4.4.2"
+ 
+ [libraries]
+ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+@@ -25,14 +28,23 @@ androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-toolin
+ androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+ androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
++androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
++androidx-compose-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout" }
+ androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+ androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+ androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }
+ androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+ androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
++firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
++firebase-database = { group = "com.google.firebase", name = "firebase-database-ktx" }
++play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }
++firebase-auth = { group = "com.google.firebase", name = "firebase-auth-ktx" }
++firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore-ktx" }
++kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version = "1.7.3" }
+ 
+ [plugins]
+ android-application = { id = "com.android.application", version.ref = "agp" }
+ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
++google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

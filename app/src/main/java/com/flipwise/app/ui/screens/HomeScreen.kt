@@ -60,8 +60,16 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val greeting = remember {
+                        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+                        when (hour) {
+                            in 0..11 -> "Good Morning!"
+                            in 12..16 -> "Good Afternoon!"
+                            else -> "Good Evening!"
+                        }
+                    }
                     Text(
-                        text = "Good Evening!",
+                        text = greeting,
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -229,7 +237,7 @@ fun HomeScreen(
     if (showCreateDialog) {
         com.flipwise.app.ui.components.CreateDeckDialog(
             onDismiss = { showCreateDialog = false },
-            onCreate = { name, subject, color, icon ->
+            onDeckCreate = { name: String, subject: String, color: String, icon: String ->
                 viewModel.createDeck(name, subject, color, icon)
                 showCreateDialog = false
             }

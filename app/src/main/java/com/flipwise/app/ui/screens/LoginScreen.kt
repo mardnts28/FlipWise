@@ -1,5 +1,12 @@
 package com.flipwise.app.ui.screens
 
+import kotlinx.coroutines.launch
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -11,18 +18,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,6 +50,11 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var successMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    
+    val focusManager = LocalFocusManager.current
 
     val infiniteTransition = rememberInfiniteTransition(label = "background")
     
@@ -73,7 +86,6 @@ fun LoginScreen(
             modifier = Modifier
                 .offset(x = 200.dp, y = (-100).dp)
                 .size(400.dp)
-                .blur(80.dp)
                 .background(GrapePop.copy(alpha = 0.2f * blob1Pos), CircleShape)
         )
         Box(
@@ -81,7 +93,6 @@ fun LoginScreen(
                 .align(Alignment.BottomStart)
                 .offset(x = (-100).dp, y = 100.dp)
                 .size(400.dp)
-                .blur(80.dp)
                 .background(CoralZest.copy(alpha = 0.2f), CircleShape)
         )
 
@@ -172,6 +183,26 @@ fun LoginScreen(
                     modifier = Modifier.padding(32.dp),
                     verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
+                    // Success Message
+                    AnimatedVisibility(
+                        visible = successMessage != null,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MintGreen.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+                                .border(1.dp, MintGreen.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Rounded.CheckCircle, null, tint = MintGreen, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text(successMessage ?: "", color = NavyInk, fontSize = 14.sp)
+                        }
+                    }
+
                     // Error Message
                     AnimatedVisibility(
                         visible = error != null,
@@ -238,23 +269,78 @@ fun LoginScreen(
                             leadingIcon = Icons.Rounded.Lock,
                             isPassword = true,
                             showPassword = showPassword,
-                            onPasswordToggle = { showPassword = !showPassword }
+                            onPasswordToggle = { showPassword = !showPassword },
+                            keyboardType = KeyboardType.Password
                         )
+                    }
+
+                    // Forgot Password Button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(
+                            onClick = {
+                                if (email.isBlank()) {
+                                    error = "Enter your email first to reset password"
+                                    successMessage = null
+                                } else {
+                                    isLoading = true
+                                    successMessage = null
+                                    error = null
+                                    scope.launch {
+                                        val result = profileViewModel.sendPasswordResetEmail(email.trim())
+                                        isLoading = false
+                                        if (result.isSuccess) {
+                                            successMessage = "Password reset email sent!"
+                                        } else {
+                                            error = "Failed to send reset email: ${result.exceptionOrNull()?.message}"
+                                        }
+                                    }
+                                }
+                            },
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text(
+                                text = "Forgot Password?",
+                                color = GrapePop,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
 
                     // Submit Button
                     Button(
                         onClick = {
+                            focusManager.clearFocus()
                             if (email.isBlank() || password.isBlank()) {
                                 error = "Please fill in all fields"
+                                successMessage = null
                             } else if (!email.contains("@")) {
                                 error = "Please enter a valid email"
+                                successMessage = null
                             } else {
-                                // Update profile with login info
-                                profileViewModel.loginOrRegister("", email)
-                                onLoginSuccess()
+                                isLoading = true
+                                error = null
+                                successMessage = null
+                                scope.launch {
+                                    val result = profileViewModel.signIn(email, password)
+                                    isLoading = false
+                                    if (result.isSuccess) {
+                                        onLoginSuccess()
+                                    } else {
+                                        val ex = result.exceptionOrNull()
+                                        error = when (ex) {
+                                            is com.google.firebase.auth.FirebaseAuthInvalidUserException -> "This account does not exist in our system."
+                                            is com.google.firebase.auth.FirebaseAuthInvalidCredentialsException -> "The email address or password provided is incorrect."
+                                            else -> result.exceptionOrNull()?.message ?: "Login failed"
+                                        }
+                                    }
+                                }
                             }
                         },
+                        enabled = !isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(64.dp),
@@ -286,12 +372,69 @@ fun LoginScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Icon(
-                                    imageVector = Icons.Rounded.ArrowForward,
+                                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                                     contentDescription = null,
                                     tint = Color.White,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
+                        }
+                    }
+
+                    // --- Google One-Tap Sign-In ---
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    val googleLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.StartActivityForResult()
+                    ) { result ->
+                        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                        try {
+                            val account = task.getResult(ApiException::class.java)
+                            account.idToken?.let { token ->
+                                scope.launch {
+                                    isLoading = true
+                                    val signInResult = profileViewModel.signInWithGoogle(token)
+                                    if (signInResult.isSuccess) {
+                                        // Pre-fill profile with Google name if bucket is empty
+                                        profileViewModel.loginOrRegister(account.displayName ?: "", account.email ?: "")
+                                        isLoading = false
+                                        onLoginSuccess()
+                                    } else {
+                                        isLoading = false
+                                        error = "Verification failed. Try again."
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            val apiEx = e as? ApiException
+                            error = when(apiEx?.statusCode) {
+                                12502 -> "Sign-in was interrupted. Please try again."
+                                12501 -> "Sign-in canceled by user."
+                                12500 -> "Configuration issue. Please use email/password for now."
+                                else -> "Google Sign-In error: ${e.message}"
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    OutlinedButton(
+                        onClick = {
+                            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                                .requestIdToken("307290224469-gf0osk7odpkmvuo3t8tmbfhh1s8b6am3.apps.googleusercontent.com")
+                                .requestEmail()
+                                .build()
+                            val client = GoogleSignIn.getClient(context, gso)
+                            googleLauncher.launch(client.signInIntent)
+                        },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, NavyInk.copy(alpha = 0.1f)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = NavyInk)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("G", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = Color(0xFF4285F4))
+                            Spacer(Modifier.width(12.dp))
+                            Text("Sign in with Google", fontWeight = FontWeight.Bold)
                         }
                     }
                 }

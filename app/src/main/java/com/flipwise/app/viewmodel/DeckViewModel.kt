@@ -1,32 +1,62 @@
 package com.flipwise.app.viewmodel
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.flipwise.app.data.ai.FileTextExtractor
+import com.flipwise.app.data.ai.GeminiFlashcardGenerator
 import com.flipwise.app.data.database.AppDatabase
 import com.flipwise.app.data.model.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
 
-class DeckViewModel(application: Application) : AndroidViewModel(application) {
-    private val db             = AppDatabase.getDatabase(application)
-    private val deckDao        = db.deckDao()
-    private val flashcardDao   = db.flashcardDao()
-    private val sessionDao     = db.studySessionDao()
-    private val achievementDao = db.achievementDao()
-    private val profileDao     = db.profileDao()
+import com.flipwise.app.data.repository.FlipWiseRepository
+import com.flipwise.app.data.ai.GeminiStudyCoach
+import com.flipwise.app.data.ai.AiInsight
 
-    val decks: Flow<List<Deck>>               = deckDao.getAllDecks()
-    val achievements: Flow<List<Achievement>> = achievementDao.getAllAchievements()
-    val sessions: Flow<List<StudySession>>    = sessionDao.getAllSessions()
+class DeckViewModel(application: Application) : AndroidViewModel(application) {
+    private val repository = FlipWiseRepository(application)
+    private val db = AppDatabase.getDatabase(application)
+    private val deckDao = db.deckDao()
+    private val cardDao = db.flashcardDao()
+    private val achievementDao = db.achievementDao()
+    private val sessionDao = db.studySessionDao()
+
+    val decks: Flow<List<Deck>>               = repository.allDecks
+    val achievements: Flow<List<Achievement>> = AppDatabase.getDatabase(application).achievementDao().getAllAchievements()
+    val sessions: Flow<List<StudySession>>    = repository.sessions
 
     private val _userProgress = MutableStateFlow(UserProgress())
     val userProgress: StateFlow<UserProgress> = _userProgress.asStateFlow()
 
+    // AI Generation State
+    private val _aiGenerationState = MutableStateFlow<AiGenerationState>(AiGenerationState.Idle)
+    val aiGenerationState: StateFlow<AiGenerationState> = _aiGenerationState.asStateFlow()
+
+    private val flashcardGenerator = GeminiFlashcardGenerator()
+    private val fileTextExtractor = FileTextExtractor(application)
+    private val studyCoach = GeminiStudyCoach()
+
+    private val _aiInsight = MutableStateFlow<AiInsight?>(null)
+    val aiInsight: StateFlow<AiInsight?> = _aiInsight.asStateFlow()
+
     init {
         initAchievements()
         loadUserProgress()
+        
+        // Refresh AI insight when sessions or progress change
+        viewModelScope.launch {
+            combine(userProgress, sessions) { p, s -> p to s }
+                .distinctUntilChanged()
+                .debounce(2000) // Avoid too many API calls
+                .collect { (p, s) ->
+                    if (s.isNotEmpty()) {
+                        refreshAiInsight(p, s)
+                    }
+                }
+        }
     }
 
     // ─── Achievements ────────────────────────────────────────────
@@ -82,9 +112,9 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private suspend fun checkAchievements(cardsStudiedInSession: Int) {
+    private suspend fun checkAchievements(updatedProgress: UserProgress) {
         val all      = achievementDao.getAllAchievementsOnce()
-        val progress = _userProgress.value
+        val progress = updatedProgress
         val totalMastered = decks.first().sumOf { it.masteredCount }
 
         suspend fun unlock(id: String) {
@@ -149,12 +179,11 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // ─── Decks ───────────────────────────────────────────────────
-
-    fun getCardsForDeck(deckId: String) = flashcardDao.getCardsByDeck(deckId)
+    fun getCardsForDeck(deckId: String) = repository.getCardsForDeck(deckId)
 
     fun createDeck(name: String, subject: String, color: String, icon: String) {
         viewModelScope.launch {
-            deckDao.insertDeck(
+            repository.createDeck(
                 Deck(id = UUID.randomUUID().toString(), name = name, subject = subject, color = color, icon = icon)
             )
         }
@@ -162,8 +191,7 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
 
     fun deleteDeck(deckId: String) {
         viewModelScope.launch {
-            flashcardDao.deleteCardsByDeck(deckId)
-            deckDao.deleteDeckById(deckId)
+            repository.deleteDeck(deckId)
         }
     }
 
@@ -171,19 +199,23 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
 
     fun addFlashcard(deckId: String, front: String, back: String) {
         viewModelScope.launch {
-            flashcardDao.insertCard(
+            repository.addFlashcard(
                 Flashcard(id = UUID.randomUUID().toString(), deckId = deckId, front = front, back = back)
             )
-            val count = flashcardDao.getCardCountForDeck(deckId)
-            deckDao.getDeckById(deckId)?.let { deckDao.updateDeck(it.copy(cardCount = count)) }
+            val count = cardDao.getCardCountForDeck(deckId)
+            deckDao.getDeckById(deckId)?.let { deck ->
+                repository.updateDeck(deck.copy(cardCount = count))
+            }
         }
     }
 
     fun deleteCard(card: Flashcard) {
         viewModelScope.launch {
-            flashcardDao.deleteCard(card)
-            val count = flashcardDao.getCardCountForDeck(card.deckId)
-            deckDao.getDeckById(card.deckId)?.let { deckDao.updateDeck(it.copy(cardCount = count)) }
+            repository.deleteFlashcard(card)
+            val count = cardDao.getCardCountForDeck(card.deckId)
+            deckDao.getDeckById(card.deckId)?.let { deck ->
+                repository.updateDeck(deck.copy(cardCount = count))
+            }
         }
     }
 
@@ -192,7 +224,7 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
     fun saveStudySession(deckId: String, cardsStudied: Int, correctCount: Int) {
         val points = correctCount * 10 + (cardsStudied - correctCount) * 5
         viewModelScope.launch {
-            sessionDao.insertSession(
+            repository.saveSession(
                 StudySession(
                     deckId       = deckId,
                     cardsStudied = cardsStudied,
@@ -202,12 +234,12 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
             )
             
             // Update User Profile with new XP and Points
-            val currentProfile = profileDao.getUserProfile().firstOrNull() ?: UserProfile()
+            val currentProfile = repository.userProfile.firstOrNull() ?: UserProfile()
             val newTotalPoints = currentProfile.totalPoints + points
             val newXp = currentProfile.xp + points
             val newLevel = (newXp / 500) + 1
             
-            profileDao.updateProfile(
+            repository.updateProfile(
                 currentProfile.copy(
                     totalPoints = newTotalPoints,
                     xp = newXp,
@@ -215,14 +247,29 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
                 )
             )
 
-            deckDao.getDeckById(deckId)?.let { deck ->
-                val newMastered = (deck.masteredCount + correctCount).coerceAtMost(deck.cardCount)
-                deckDao.updateDeck(deck.copy(
+            // Update local and cloud deck stats
+            val deck = AppDatabase.getDatabase(getApplication()).deckDao().getDeckById(deckId)
+            deck?.let {
+                val newMastered = (it.masteredCount + correctCount).coerceAtMost(it.cardCount)
+                repository.updateDeck(it.copy(
                     lastStudied = System.currentTimeMillis(),
                     masteredCount = newMastered
                 ))
             }
-            checkAchievements(cardsStudied)
+            // checkAchievements(cardsStudied) // Removed, called below with local state
+            
+            // Update active challenge scores
+            repository.getActiveChallenges().first().forEach { challenge ->
+                if (challenge.status == "active") {
+                    repository.updateChallengeScore(challenge.id, points)
+                }
+            }
+            // Trigger check with updated local values
+            val updatedProgress = _userProgress.value.copy(
+                totalPoints = _userProgress.value.totalPoints + points,
+                totalCardsStudied = _userProgress.value.totalCardsStudied + cardsStudied
+            )
+            checkAchievements(updatedProgress)
         }
     }
 
@@ -237,13 +284,90 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // ─── AI Flashcard Generation ─────────────────────────────────
+
+    fun generateFlashcardsFromFile(deckId: String, fileUri: Uri) {
+        viewModelScope.launch {
+            _aiGenerationState.value = AiGenerationState.Loading("Reading file...")
+
+            // Check file size (max 10MB)
+            val fileSize = fileTextExtractor.getFileSize(fileUri)
+            if (fileSize > 10 * 1024 * 1024) {
+                _aiGenerationState.value = AiGenerationState.Error("File is too large. Maximum size is 10MB.")
+                return@launch
+            }
+
+            // Extract text from file
+            val textResult = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                fileTextExtractor.extractText(fileUri)
+            }
+
+            textResult.fold(
+                onSuccess = { text ->
+                    _aiGenerationState.value = AiGenerationState.Loading("AI is generating flashcards...")
+
+                    val cardsResult = flashcardGenerator.generateFlashcards(text)
+
+                    cardsResult.fold(
+                        onSuccess = { generatedCards ->
+                            // Save all generated cards to the deck
+                            var savedCount = 0
+                            for (card in generatedCards) {
+                                try {
+                                    repository.addFlashcard(
+                                        Flashcard(
+                                            id = UUID.randomUUID().toString(),
+                                            deckId = deckId,
+                                            front = card.front,
+                                            back = card.back
+                                        )
+                                    )
+                                    savedCount++
+                                } catch (e: Exception) {
+                                    // Continue saving other cards even if one fails
+                                }
+                            }
+
+                            // Update deck card count
+                            val count = cardDao.getCardCountForDeck(deckId)
+                            deckDao.getDeckById(deckId)?.let { deck ->
+                                repository.updateDeck(deck.copy(cardCount = count))
+                            }
+
+                            _aiGenerationState.value = AiGenerationState.Success(savedCount)
+                        },
+                        onFailure = { error ->
+                            _aiGenerationState.value = AiGenerationState.Error(error.message ?: "Failed to generate flashcards")
+                        }
+                    )
+                },
+                onFailure = { error ->
+                    _aiGenerationState.value = AiGenerationState.Error(error.message ?: "Failed to read file")
+                }
+            )
+        }
+    }
+
+    fun resetAiGenerationState() {
+        _aiGenerationState.value = AiGenerationState.Idle
+    }
+
+    private fun refreshAiInsight(progress: UserProgress, recentSessions: List<StudySession>) {
+        viewModelScope.launch {
+            val result = studyCoach.getStudyInsights(progress, recentSessions.take(10))
+            result.onSuccess { insight ->
+                _aiInsight.value = insight
+            }
+        }
+    }
+
     // ─── Helpers ─────────────────────────────────────────────────
 
     private fun calculateStreak(sessions: List<StudySession>): Int {
         if (sessions.isEmpty()) return 0
-        val today = System.currentTimeMillis() / 86400000
-        val days  = sessions.map { it.date / 86400000 }.sortedDescending().distinct()
-        if (days.first() < today - 1) return 0
+        val today = System.currentTimeMillis() / 1000 / 60 / 60 / 24
+        val days  = sessions.map { it.date / 1000 / 60 / 60 / 24 }.sortedDescending().distinct()
+        if (days.isEmpty() || days.first() < today - 1) return 0
         var streak = 1
         for (i in 1 until days.size) {
             if (days[i - 1] - days[i] == 1L) streak++ else break

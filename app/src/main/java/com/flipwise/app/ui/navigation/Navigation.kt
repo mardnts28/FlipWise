@@ -5,6 +5,9 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.*
 import androidx.navigation.compose.*
 import com.flipwise.app.ui.screens.*
+import com.flipwise.app.viewmodel.ProfileViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String) {
     object Splash       : Screen("splash")
@@ -17,11 +20,19 @@ sealed class Screen(val route: String) {
     object Profile      : Screen("profile")
     object Login        : Screen("login")
     object Register     : Screen("register")
+    object RegisterSuccess : Screen("register_success/{email}") {
+        fun createRoute(email: String) = "register_success/$email"
+    }
+    object CompleteProfile : Screen("complete_profile")
+    object Leaderboard  : Screen("leaderboard")
     object DeckDetail   : Screen("deck/{deckId}") {
         fun createRoute(deckId: String) = "deck/$deckId"
     }
     object StudyMode    : Screen("study/{deckId}") {
         fun createRoute(deckId: String) = "study/$deckId"
+    }
+    object ChallengeDetail : Screen("challenge/{challengeId}") {
+        fun createRoute(challengeId: String) = "challenge/$challengeId"
     }
 }
 
@@ -33,19 +44,58 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
         modifier         = modifier
     ) {
         composable(Screen.Splash.route) {
+            val scope = androidx.compose.runtime.rememberCoroutineScope()
+            val profileViewModel: ProfileViewModel = viewModel()
             SplashScreen(onNavigateNext = {
-                navController.navigate(Screen.Login.route) {
-                    popUpTo(Screen.Splash.route) { inclusive = true }
+                scope.launch {
+                    if (profileViewModel.isUserLoggedIn) {
+                        val profile = profileViewModel.syncProfile()
+                        if (profile == null || profile.username == "flipper" || profile.username.isBlank()) {
+                            navController.navigate(Screen.CompleteProfile.route) {
+                                popUpTo(Screen.Splash.route) { inclusive = true }
+                            }
+                        } else {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.Splash.route) { inclusive = true }
+                            }
+                        }
+                    } else {
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(Screen.Splash.route) { inclusive = true }
+                        }
+                    }
                 }
             })
         }
 
         composable(Screen.Login.route) {
+            val scope = androidx.compose.runtime.rememberCoroutineScope()
+            val profileViewModel: ProfileViewModel = viewModel()
             LoginScreen(
                 onNavigateToRegister = { navController.navigate(Screen.Register.route) },
                 onLoginSuccess = {
+                    scope.launch {
+                        val profile = profileViewModel.syncProfile()
+                        // Check if username (nickname) is set to default "flipper" or blank
+                        if (profile == null || profile.username == "flipper" || profile.username.isBlank()) {
+                            navController.navigate(Screen.CompleteProfile.route) {
+                                popUpTo(Screen.Login.route) { inclusive = true }
+                            }
+                        } else {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.Login.route) { inclusive = true }
+                            }
+                        }
+                    }
+                }
+            )
+        }
+
+        composable(Screen.CompleteProfile.route) {
+            CompleteProfileScreen(
+                onComplete = {
                     navController.navigate(Screen.Home.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
+                        popUpTo(Screen.CompleteProfile.route) { inclusive = true }
                     }
                 }
             )
@@ -54,9 +104,24 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
         composable(Screen.Register.route) {
             RegisterScreen(
                 onNavigateToLogin = { navController.navigate(Screen.Login.route) },
-                onRegisterSuccess = {
-                    navController.navigate(Screen.Home.route) {
+                onRegisterSuccess = { email ->
+                    navController.navigate(Screen.RegisterSuccess.createRoute(email)) {
                         popUpTo(Screen.Register.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = Screen.RegisterSuccess.route,
+            arguments = listOf(navArgument("email") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email") ?: ""
+            RegisterSuccessScreen(
+                email = email,
+                onContinueToLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.RegisterSuccess.route) { inclusive = true }
                     }
                 }
             )
@@ -126,10 +191,12 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
         }
 
         composable(Screen.Settings.route) {
+            val profileViewModel: ProfileViewModel = viewModel()
             SettingsScreen(
                 onBack = { navController.popBackStack() },
                 onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
                 onLogout = {
+                    profileViewModel.signOut()
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true }
                     }
@@ -138,7 +205,22 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
         }
 
         composable(Screen.Profile.route) {
-            ProfileScreen(onNavigateBack = { navController.popBackStack() })
+            ProfileScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToChallenge = { id -> navController.navigate(Screen.ChallengeDetail.createRoute(id)) }
+            )
+        }
+
+        composable(Screen.Leaderboard.route) {
+            LeaderboardScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(
+            route     = Screen.ChallengeDetail.route,
+            arguments = listOf(navArgument("challengeId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("challengeId") ?: return@composable
+            ChallengeDetailScreen(challengeId = id, onBack = { navController.popBackStack() })
         }
     }
 }

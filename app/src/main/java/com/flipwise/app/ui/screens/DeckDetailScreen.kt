@@ -2,6 +2,7 @@ package com.flipwise.app.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -21,7 +23,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.flipwise.app.data.model.AiGenerationState
 import com.flipwise.app.data.model.Flashcard
 import com.flipwise.app.ui.theme.*
 import com.flipwise.app.viewmodel.DeckViewModel
@@ -38,7 +43,19 @@ fun DeckDetailScreen(
     val decks by viewModel.decks.collectAsState(initial = emptyList())
     val deck = decks.find { it.id == deckId }
 
+    var showAddCardChoiceDialog by remember { mutableStateOf(false) }
     var showAddCardDialog by remember { mutableStateOf(false) }
+
+    val aiGenerationState by viewModel.aiGenerationState.collectAsState()
+
+    // File picker launcher
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            viewModel.generateFlashcardsFromFile(deckId, it)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -82,7 +99,7 @@ fun DeckDetailScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showAddCardDialog = true },
+                onClick = { showAddCardChoiceDialog = true },
                 containerColor = Color(0xFF6D28D9),
                 contentColor = Color.White,
                 shape = CircleShape
@@ -98,7 +115,7 @@ fun DeckDetailScreen(
                 .background(Color(0xFFFBFBFF))
         ) {
             if (cards.isEmpty()) {
-                EmptyCardsView(onAddClick = { showAddCardDialog = true })
+                EmptyCardsView(onAddClick = { showAddCardChoiceDialog = true })
             } else {
                 Spacer(Modifier.height(24.dp))
                 
@@ -128,6 +145,25 @@ fun DeckDetailScreen(
                 }
             }
         }
+    }
+
+    if (showAddCardChoiceDialog) {
+        AddFlashcardChoiceDialog(
+            onDismiss = { showAddCardChoiceDialog = false },
+            onManualCreateSelected = {
+                showAddCardChoiceDialog = false
+                showAddCardDialog = true
+            },
+            onFileUploadSelected = {
+                filePickerLauncher.launch("*/*")
+            },
+            aiGenerationState = aiGenerationState,
+            onResetAiState = { viewModel.resetAiGenerationState() },
+            onAiSuccessDismiss = {
+                viewModel.resetAiGenerationState()
+                showAddCardChoiceDialog = false
+            }
+        )
     }
 
     if (showAddCardDialog) {
@@ -199,19 +235,6 @@ fun EmptyCardsView(onAddClick: () -> Unit) {
             color = Color.Gray,
             textAlign = TextAlign.Center
         )
-        Spacer(Modifier.height(32.dp))
-        Button(
-            onClick = onAddClick,
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6D28D9)),
-            modifier = Modifier.height(56.dp).padding(horizontal = 16.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Add Card", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            }
-        }
     }
 }
 
@@ -350,6 +373,317 @@ fun AddFlashcardDialog(onDismiss: () -> Unit, onAdd: (String, String) -> Unit) {
                                 Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text("Add Card", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AddFlashcardChoiceDialog(
+    onDismiss: () -> Unit,
+    onManualCreateSelected: () -> Unit,
+    onFileUploadSelected: () -> Unit,
+    aiGenerationState: AiGenerationState = AiGenerationState.Idle,
+    onResetAiState: () -> Unit = {},
+    onAiSuccessDismiss: () -> Unit = {}
+) {
+    Dialog(
+        onDismissRequest = {
+            if (aiGenerationState !is AiGenerationState.Loading) {
+                onResetAiState()
+                onDismiss()
+            }
+        },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = Color(0xFFFBFBFF)
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Surface(color = Color(0xFF7C3AED), modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = {
+                                if (aiGenerationState !is AiGenerationState.Loading) {
+                                    onResetAiState()
+                                    onDismiss()
+                                }
+                            }
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text("New Flashcard", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                // Show different content base on AI generation state
+                when (aiGenerationState) {
+                    is AiGenerationState.Loading -> {
+                        // Loading State
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(64.dp),
+                                color = Color(0xFF7C3AED),
+                                strokeWidth = 4.dp
+                            )
+                            Spacer(Modifier.height(24.dp))
+                            Text(
+                                aiGenerationState.message,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1E1B4B)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "This may take a moment...",
+                                fontSize = 14.sp,
+                                color = Color(0xFF6B7280)
+                            )
+                        }
+                    }
+
+                    is AiGenerationState.Success -> {
+                        // Success State
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Surface(
+                                modifier = Modifier.size(80.dp),
+                                shape = CircleShape,
+                                color = Color(0xFF10B981).copy(alpha = 0.15f)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = "Success",
+                                        tint = Color(0xFF10B981),
+                                        modifier = Modifier.size(48.dp)
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(24.dp))
+                            Text(
+                                "Flashcards Generated!",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1E1B4B)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "${aiGenerationState.cardsGenerated} flashcards have been added to your deck",
+                                fontSize = 16.sp,
+                                color = Color(0xFF6B7280),
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(Modifier.height(32.dp))
+                            Button(
+                                onClick = onAiSuccessDismiss,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
+                            ) {
+                                Text("View Cards", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    is AiGenerationState.Error -> {
+                        // Error State
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Surface(
+                                modifier = Modifier.size(80.dp),
+                                shape = CircleShape,
+                                color = Color(0xFFEF4444).copy(alpha = 0.15f)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.Error,
+                                        contentDescription = "Error",
+                                        tint = Color(0xFFEF4444),
+                                        modifier = Modifier.size(48.dp)
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(24.dp))
+                            Text(
+                                "Something went wrong",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1E1B4B)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                aiGenerationState.message,
+                                fontSize = 14.sp,
+                                color = Color(0xFF6B7280),
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(Modifier.height(32.dp))
+                            Button(
+                                onClick = onResetAiState,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
+                            ) {
+                                Text("Try Again", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    is AiGenerationState.Idle -> {
+                        // Default Choice UI
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                "How would you like to create\nflashcards?",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1E1B4B),
+                                textAlign = TextAlign.Center,
+                                lineHeight = 30.sp
+                            )
+
+                            Spacer(Modifier.height(32.dp))
+
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onFileUploadSelected() },
+                                shape = RoundedCornerShape(20.dp),
+                                border = BorderStroke(1.dp, Color(0xFFE5D5F5)),
+                                color = Color(0xFFF8F4FF)
+                            ) {
+                                Column(modifier = Modifier.padding(24.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("\u2728", fontSize = 24.sp)
+                                        Spacer(Modifier.width(12.dp))
+                                        Text(
+                                            "AI File Converter",
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF1E1B4B)
+                                        )
+                                    }
+                                    Spacer(Modifier.height(12.dp))
+                                    Text(
+                                        "Upload a PDF, PPT, or DOC file and let AI automatically generate flashcards with both standard and multiple-choice questions",
+                                        fontSize = 14.sp,
+                                        color = Color(0xFF6B7280),
+                                        lineHeight = 20.sp
+                                    )
+
+                                    Spacer(Modifier.height(24.dp))
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(140.dp)
+                                            .drawBehind {
+                                                drawRoundRect(
+                                                    color = Color(0xFFC4B5FD),
+                                                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                                        width = 2.dp.toPx(),
+                                                        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(15f, 15f), 0f)
+                                                    ),
+                                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx(), 16.dp.toPx())
+                                                )
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Icon(
+                                                Icons.Default.Upload,
+                                                contentDescription = "Upload",
+                                                tint = Color(0xFF7C3AED),
+                                                modifier = Modifier.size(36.dp)
+                                            )
+                                            Spacer(Modifier.height(12.dp))
+                                            Text(
+                                                "Click to upload file",
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = Color(0xFF1E1B4B)
+                                            )
+                                            Spacer(Modifier.height(4.dp))
+                                            Text(
+                                                "PDF, PPT, PPTX, DOC, DOCX, TXT\n(Max 10MB)",
+                                                fontSize = 12.sp,
+                                                color = Color(0xFF6B7280),
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            Spacer(Modifier.height(32.dp))
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Box(modifier = Modifier.weight(1f).height(1.dp).background(Color(0xFFE5E7EB)))
+                                Text(
+                                    "OR",
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    color = Color(0xFF9CA3AF),
+                                    fontSize = 14.sp
+                                )
+                                Box(modifier = Modifier.weight(1f).height(1.dp).background(Color(0xFFE5E7EB)))
+                            }
+
+                            Spacer(Modifier.height(32.dp))
+
+                            OutlinedButton(
+                                onClick = onManualCreateSelected,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                border = BorderStroke(1.dp, Color(0xFF7C3AED)),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color(0xFF7C3AED)
+                                )
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Create Manually", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                     }

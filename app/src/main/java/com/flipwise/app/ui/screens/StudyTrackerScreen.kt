@@ -35,6 +35,8 @@ import com.flipwise.app.data.model.Achievement
 import com.flipwise.app.viewmodel.DeckViewModel
 import java.text.SimpleDateFormat
 import java.util.*
+import com.flipwise.app.data.ai.AiInsight
+import androidx.compose.animation.*
 
 @Composable
 fun StudyTrackerScreen(
@@ -44,11 +46,28 @@ fun StudyTrackerScreen(
     val achievements by viewModel.achievements.collectAsState(initial = emptyList())
     val progress by viewModel.userProgress.collectAsState()
     val decks by viewModel.decks.collectAsState(initial = emptyList())
+    val sessions by viewModel.sessions.collectAsState(initial = emptyList())
     
     val totalCards = decks.sumOf { it.cardCount }
+    val totalMastered = decks.sumOf { it.masteredCount }
     val unlockedAchievements = achievements.filter { it.isUnlocked }
     
+    val masteryPercent = if (totalCards > 0) totalMastered.toFloat() / totalCards else 0f
+    
+    val totalCorrect = sessions.sumOf { it.correctCount }
+    val totalStudied = sessions.sumOf { it.cardsStudied }
+    val retentionRate = if (totalStudied > 0) totalCorrect.toFloat() / totalStudied else 0f
+    
+    val productivity = if (sessions.isNotEmpty()) {
+        val firstSessionDate = sessions.minOf { it.date }
+        val daysDiff = ((System.currentTimeMillis() - firstSessionDate) / (1000 * 60 * 60 * 24)).coerceAtLeast(1)
+        totalStudied.toFloat() / daysDiff
+    } else 0f
+
+    val consistency = (progress.currentStreak.toFloat() / 30f).coerceAtMost(1f)
+    
     var showAchievementDialog by remember { mutableStateOf(false) }
+    val aiInsight by viewModel.aiInsight.collectAsState()
 
     Column(
         modifier = Modifier
@@ -85,6 +104,17 @@ fun StudyTrackerScreen(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // --- AI Insights ---
+            AnimatedVisibility(
+                visible = aiInsight != null,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                aiInsight?.let { insight ->
+                    AiInsightBox(insight)
+                }
+            }
+
             // --- Activity Section ---
             Surface(
                 shape = RoundedCornerShape(24.dp),
@@ -128,41 +158,41 @@ fun StudyTrackerScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 TrackerStatCard(
                     title = "Retention",
-                    value = "3%",
+                    value = "${(retentionRate * 100).toInt()}%",
                     icon = Icons.Default.TrackChanges,
                     iconColor = Color(0xFF7C3AED),
                     iconBg = Color(0xFFF0E6FF),
-                    progress = 0.03f,
+                    progress = retentionRate,
                     modifier = Modifier.weight(1f)
                 )
                 TrackerStatCard(
                     title = "Consistency",
-                    value = "3%",
+                    value = "${(consistency * 100).toInt()}%",
                     icon = Icons.AutoMirrored.Filled.TrendingUp,
                     iconColor = Color(0xFFF97316),
                     iconBg = Color(0xFFFFF0E6),
-                    progress = 0.03f,
+                    progress = consistency,
                     modifier = Modifier.weight(1f)
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 TrackerStatCard(
                     title = "Productivity",
-                    value = "3",
+                    value = if (productivity > 0) String.format("%.1f", productivity) else "0",
                     subtitle = "cards/day",
                     icon = Icons.Default.Bolt,
                     iconColor = Color(0xFFFBBF24),
                     iconBg = Color(0xFFFFF9E6),
-                    progress = 0.15f,
+                    progress = (productivity / 50f).coerceAtMost(1f),
                     modifier = Modifier.weight(1f)
                 )
                 TrackerStatCard(
                     title = "Mastery",
-                    value = "40%",
+                    value = "${(masteryPercent * 100).toInt()}%",
                     icon = Icons.Default.MilitaryTech,
                     iconColor = Color(0xFF10B981),
                     iconBg = Color(0xFFE6F9F0),
-                    progress = 0.4f,
+                    progress = masteryPercent,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -184,7 +214,7 @@ fun StudyTrackerScreen(
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Mastered", fontSize = 14.sp, color = Color.White.copy(alpha = 0.7f))
-                            Text("2", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text(totalMastered.toString(), fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         }
                     }
                     
@@ -441,6 +471,52 @@ fun TrackerStatCard(
                 color = iconColor,
                 trackColor = Color(0xFFF0F0F5)
             )
+        }
+    }
+}
+
+@Composable
+fun AiInsightBox(insight: AiInsight) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = Color(0xFF1E1B4B),
+        shadowElevation = 8.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(Color.White.copy(alpha = 0.1f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(insight.icon, fontSize = 28.sp)
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "AI Study Coach",
+                    fontSize = 11.sp,
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    text = insight.title,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Text(
+                    text = insight.description,
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = 0.8f),
+                    lineHeight = 20.sp
+                )
+            }
         }
     }
 }

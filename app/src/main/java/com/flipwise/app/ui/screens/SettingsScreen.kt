@@ -160,7 +160,10 @@ fun SettingsScreen(
                     icon = Icons.AutoMirrored.Rounded.ExitToApp,
                     title = "Reset Onboarding",
                     description = "See the welcome tutorial again",
-                    onClick = { /* Reset onboarding logic */ }
+                    onClick = { 
+                        viewModel.clearAllData()
+                        onBack()
+                    }
                 )
 
                 HorizontalDivider(color = GhostWhite, thickness = 1.dp, modifier = Modifier.padding(horizontal = 24.dp))

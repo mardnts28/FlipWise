@@ -31,6 +31,9 @@ import com.flipwise.app.data.model.Achievement
 import com.flipwise.app.viewmodel.DeckViewModel
 import java.text.SimpleDateFormat
 import java.util.*
+import com.flipwise.app.viewmodel.ProfileViewModel
+import com.flipwise.app.ui.components.CreateChallengeDialog
+import androidx.compose.material.icons.filled.AddCircleOutline
 
 @Composable
 fun AchievementsScreen(
@@ -40,6 +43,9 @@ fun AchievementsScreen(
     val achievements by viewModel.achievements.collectAsState(initial = emptyList())
     val progress by viewModel.userProgress.collectAsState()
     val unlockedCount = achievements.count { it.isUnlocked }
+    
+    val profileViewModel: ProfileViewModel = viewModel()
+    var showCreateGoalDialog by remember { mutableStateOf(false) }
     
     val categories = listOf("All", "Streaks", "Cards", "Mastery", "Points")
     var selectedCategory by remember { mutableStateOf("All") }
@@ -79,12 +85,26 @@ fun AchievementsScreen(
                         IconButton(onClick = onBack, modifier = Modifier.offset(x = (-12).dp)) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                         }
-                        Text(
-                            text = "Achievements",
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Achievements",
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            IconButton(onClick = { showCreateGoalDialog = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.AddCircleOutline,
+                                    contentDescription = "Create Goal",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
                         
                         Spacer(Modifier.height(32.dp))
                         
@@ -161,6 +181,16 @@ fun AchievementsScreen(
         AchievementDetailDialog(
             achievement = selectedAchievement!!,
             onDismiss = { selectedAchievement = null }
+        )
+    }
+
+    if (showCreateGoalDialog) {
+        CreateChallengeDialog(
+            onDismiss = { showCreateGoalDialog = false },
+            onCreate = { challenge ->
+                profileViewModel.addChallenge(challenge)
+                showCreateGoalDialog = false
+            }
         )
     }
 }

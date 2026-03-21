@@ -18,9 +18,9 @@ sealed class BottomNavItem(
 ) {
     object Home    : BottomNavItem(Screen.Home.route,         Icons.Default.Home,                "Home")
     object Decks   : BottomNavItem(Screen.DeckList.route,     Icons.Default.CollectionsBookmark, "Decks")
-    object Awards  : BottomNavItem(Screen.Achievements.route, Icons.Default.EmojiEvents,         "Awards")
-    object Tracker : BottomNavItem(Screen.StudyTracker.route, Icons.Default.BarChart,            "Tracker")
-    object Profile : BottomNavItem(Screen.Profile.route,      Icons.Default.Person,              "Profile")
+    object Tracker     : BottomNavItem(Screen.StudyTracker.route, Icons.Default.BarChart,            "Tracker")
+    object Leaderboard : BottomNavItem(Screen.Leaderboard.route,  Icons.Default.MilitaryTech,        "Global")
+    object Profile     : BottomNavItem(Screen.Profile.route,      Icons.Default.Person,              "Profile")
 }
 
 @Composable
@@ -28,7 +28,7 @@ fun BottomNavigationBar(navController: NavController) {
     val items = listOf(
         BottomNavItem.Home,
         BottomNavItem.Decks,
-        BottomNavItem.Awards,
+        BottomNavItem.Leaderboard,
         BottomNavItem.Tracker,
         BottomNavItem.Profile
     )

@@ -25,15 +25,24 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flipwise.app.data.model.StudySession
+import com.flipwise.app.data.model.Friend
+import com.flipwise.app.data.model.Challenge
 import com.flipwise.app.viewmodel.ProfileViewModel
 import java.text.SimpleDateFormat
 import java.util.*
+import com.flipwise.app.ui.components.CreateChallengeDialog
+import kotlinx.coroutines.launch
 
 @Composable
-fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = viewModel()) {
+fun ProfileScreen(
+    onNavigateBack: () -> Unit, 
+    onNavigateToChallenge: (String) -> Unit = {},
+    viewModel: ProfileViewModel = viewModel()
+) {
     val profile by viewModel.userProfile.collectAsState()
     val friends by viewModel.friends.collectAsState(initial = emptyList())
     val recentSessions by viewModel.recentSessions.collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope()
     
     var selectedTab by remember { mutableIntStateOf(0) }
     var showCreateChallenge by remember { mutableStateOf(false) }
@@ -197,7 +206,10 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = view
                             description = "Add friends to compete together!"
                         )
                     } else {
-                        // Friend list could be added here
+                        friends.forEach { friend ->
+                            FriendItem(friend = friend, onDelete = { viewModel.removeFriend(friend.id) })
+                            Spacer(Modifier.height(12.dp))
+                        }
                     }
                 }
                 2 -> {
@@ -236,23 +248,37 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = view
             profile = profile,
             onDismiss = { showEditProfile = false },
             onSave = { updatedProfile ->
-                viewModel.updateProfile(
-                    updatedProfile.displayName,
-                    updatedProfile.username,
-                    updatedProfile.bio,
-                    updatedProfile.avatar
-                )
+                scope.launch {
+                    viewModel.updateProfile(
+                        updatedProfile.displayName,
+                        updatedProfile.username,
+                        updatedProfile.bio,
+                        updatedProfile.avatar
+                    )
+                }
                 showEditProfile = false
             }
         )
     }
 
     if (showCreateChallenge) {
-        CreateChallengeDialog(onDismiss = { showCreateChallenge = false })
+        CreateChallengeDialog(
+            onDismiss = { showCreateChallenge = false },
+            onCreate = { challenge ->
+                viewModel.addChallenge(challenge)
+                showCreateChallenge = false
+            }
+        )
     }
     
     if (showAddFriend) {
-        AddFriendStyledDialog(onDismiss = { showAddFriend = false })
+        AddFriendStyledDialog(
+            onDismiss = { showAddFriend = false },
+            onAdd = { username ->
+                viewModel.addFriend(username)
+                showAddFriend = false
+            }
+        )
     }
 }
 
@@ -491,7 +517,7 @@ fun EmptyStateView(icon: ImageVector, title: String, description: String) {
 }
 
 @Composable
-fun AddFriendStyledDialog(onDismiss: () -> Unit) {
+fun AddFriendStyledDialog(onDismiss: () -> Unit, onAdd: (String) -> Unit) {
     var username by remember { mutableStateOf("") }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -544,12 +570,12 @@ fun AddFriendStyledDialog(onDismiss: () -> Unit) {
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f).height(56.dp),
                         shape = RoundedCornerShape(16.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB))
+                        border = BorderStroke(1.dp, Color(0xFFE5E7EB))
                     ) {
                         Text("Cancel", color = Color(0xFF1E1B4B), fontWeight = FontWeight.Bold)
                     }
                     Button(
-                        onClick = { onDismiss() },
+                        onClick = { onAdd(username) },
                         modifier = Modifier.weight(1f).height(56.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
@@ -564,186 +590,35 @@ fun AddFriendStyledDialog(onDismiss: () -> Unit) {
 }
 
 @Composable
-fun CreateChallengeDialog(onDismiss: () -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf("Team") }
-    var goalType by remember { mutableStateOf("Cards") }
-    var goal by remember { mutableStateOf("50") }
-    var duration by remember { mutableStateOf("7") }
-
-    Dialog(
-        onDismissRequest = onDismiss
+fun FriendItem(friend: Friend, onDelete: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        shadowElevation = 1.dp
     ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-            shape = RoundedCornerShape(28.dp),
-            color = Color.White
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
-                Text("Create Challenge", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
-                Spacer(Modifier.height(24.dp))
-
-                Text("Challenge Name", fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
-                Spacer(Modifier.height(8.dp))
-                TextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    placeholder = { Text("e.g., 7-Day Study Sprint", color = Color.LightGray) },
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color(0xFFF9F9FB),
-                        unfocusedContainerColor = Color(0xFFF9F9FB),
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    )
-                )
-
-                Spacer(Modifier.height(20.dp))
-
-                Text("Description", fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
-                Spacer(Modifier.height(8.dp))
-                TextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    placeholder = { Text("Describe the challenge...", color = Color.LightGray) },
-                    modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(16.dp)),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color(0xFFF9F9FB),
-                        unfocusedContainerColor = Color(0xFFF9F9FB),
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    )
-                )
-
-                Spacer(Modifier.height(20.dp))
-
-                Text("Challenge Type", fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Button(
-                        onClick = { type = "Team" },
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = if (type == "Team") Color(0xFF7C3AED) else Color(0xFFF9F9FB)),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("🤝", fontSize = 16.sp)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Team", color = if (type == "Team") Color.White else Color.Gray, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    Button(
-                        onClick = { type = "Versus" },
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = if (type == "Versus") Color(0xFF7C3AED) else Color(0xFFF9F9FB)),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("⚔️", fontSize = 16.sp)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Versus", color = if (type == "Versus") Color.White else Color.Gray, fontWeight = FontWeight.Bold)
-                        }
-                    }
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = CircleShape,
+                color = Color(0xFF7C3AED).copy(alpha = 0.1f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(friend.avatar, fontSize = 24.sp)
                 }
-
-                Spacer(Modifier.height(20.dp))
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Goal Type", fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
-                        Spacer(Modifier.height(8.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp)
-                                .background(Color(0xFFF9F9FB), RoundedCornerShape(16.dp))
-                                .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(16.dp))
-                                .padding(horizontal = 16.dp),
-                            contentAlignment = Alignment.CenterStart
-                        ) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Text("Cards", color = Color(0xFF1E1B4B))
-                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = Color.Gray)
-                            }
-                        }
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Goal", fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
-                        Spacer(Modifier.height(8.dp))
-                        TextField(
-                            value = goal,
-                            onValueChange = { goal = it },
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(16.dp)),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
-                            )
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(20.dp))
-
-                Text("Duration (days)", fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
-                Spacer(Modifier.height(8.dp))
-                TextField(
-                    value = duration,
-                    onValueChange = { duration = it },
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(16.dp)),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    )
-                )
-
-                Spacer(Modifier.height(24.dp))
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Invite Friends", fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
-                    Spacer(Modifier.weight(1f))
-                    Button(
-                        onClick = {},
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                        modifier = Modifier.height(32.dp)
-                    ) {
-                        Text("+ Add Friend", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-                
-                Spacer(Modifier.height(16.dp))
-                Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("No friends yet!", color = Color.Gray, fontSize = 14.sp)
-                    Text("Add your first friend", color = Color(0xFF7C3AED), fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.clickable { })
-                }
-
-                Spacer(Modifier.height(32.dp))
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f).height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5E7EB))
-                    ) {
-                        Text("Cancel", color = Color(0xFF1E1B4B), fontWeight = FontWeight.Bold)
-                    }
-                    Button(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f).height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF9B88E))
-                    ) {
-                        Text("Create", fontWeight = FontWeight.Bold, color = Color.White)
-                    }
-                }
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(friend.displayName, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+                Text("@${friend.username}", fontSize = 12.sp, color = Color.Gray)
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.PersonRemove, contentDescription = "Remove Friend", tint = Color.LightGray)
             }
         }
     }
 }
+

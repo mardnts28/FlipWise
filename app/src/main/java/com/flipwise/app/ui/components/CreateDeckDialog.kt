@@ -25,7 +25,7 @@ import androidx.core.graphics.toColorInt
 @Composable
 fun CreateDeckDialog(
     onDismiss: () -> Unit,
-    onCreate: (String, String, String, String) -> Unit
+    onDeckCreate: (name: String, subject: String, color: String, icon: String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var subject by remember { mutableStateOf("") }
@@ -159,7 +159,7 @@ fun CreateDeckDialog(
 
                 // Action Button
                 Button(
-                    onClick = { onCreate(name, subject, selectedColor, defaultIcon) },
+                    onClick = { onDeckCreate(name, subject, selectedColor, defaultIcon) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),

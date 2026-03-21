@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -32,6 +33,7 @@ fun DeckListScreen(
     viewModel: DeckViewModel = viewModel()
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
+    var deckToDelete by remember { mutableStateOf<String?>(null) }
     val decks by viewModel.decks.collectAsState(initial = emptyList())
 
     Scaffold(
@@ -53,7 +55,7 @@ fun DeckListScreen(
                 onClick = { showCreateDialog = true },
                 containerColor = Color(0xFF7C3AED),
                 contentColor = Color.White,
-                shape = RoundedCornerShape(20.dp)
+                shape = CircleShape
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Deck", modifier = Modifier.size(32.dp))
             }
@@ -78,7 +80,7 @@ fun DeckListScreen(
                         DeckDetailItem(
                             deck = deck,
                             onClick = { onNavigateToDeck(deck.id) },
-                            onDelete = { viewModel.deleteDeck(deck.id) }
+                            onDelete = { deckToDelete = deck.id }
                         )
                     }
                 }
@@ -89,9 +91,33 @@ fun DeckListScreen(
     if (showCreateDialog) {
         CreateDeckDialog(
             onDismiss = { showCreateDialog = false },
-            onCreate = { name, subject, color, icon ->
+            onDeckCreate = { name, subject, color, icon ->
                 viewModel.createDeck(name, subject, color, icon)
                 showCreateDialog = false
+            }
+        )
+    }
+
+    if (deckToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { deckToDelete = null },
+            title = { Text("Delete Deck?") },
+            text = { Text("Are you sure you want to delete this deck? This action cannot be undone and all cards within will be lost.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        deckToDelete?.let { viewModel.deleteDeck(it) }
+                        deckToDelete = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deckToDelete = null }) {
+                    Text("Cancel")
+                }
             }
         )
     }

@@ -14,9 +14,26 @@ import com.flipwise.app.ui.navigation.AppNavigation
 import com.flipwise.app.ui.navigation.Screen
 import com.flipwise.app.ui.theme.FlipWiseTheme
 
+import com.google.firebase.FirebaseApp
+import android.util.Log
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Security: Prevent screenshots and video recording of the app's content
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE
+        )
+
+        try {
+            FirebaseApp.initializeApp(this)
+            Log.d("Firebase", "Firebase initialized successfully")
+        } catch (e: Exception) {
+            Log.e("Firebase", "Firebase initialization failed", e)
+        }
+
         setContent {
             FlipWiseTheme {
                 val navController = rememberNavController()
@@ -28,7 +45,8 @@ class MainActivity : ComponentActivity() {
                     Screen.DeckList.route,
                     Screen.Achievements.route,
                     Screen.StudyTracker.route,
-                    Screen.Profile.route
+                    Screen.Profile.route,
+                    Screen.Leaderboard.route
                 )
                 val showBottomBar = currentRoute in bottomNavRoutes
 
