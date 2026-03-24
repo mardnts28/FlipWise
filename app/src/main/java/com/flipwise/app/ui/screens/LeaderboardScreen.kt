@@ -28,7 +28,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flipwise.app.data.model.Challenge
 import com.flipwise.app.data.model.Friend
 import com.flipwise.app.data.model.UserProfile
-import com.flipwise.app.ui.components.CreateChallengeDialog
 import com.flipwise.app.ui.components.CreateGoalDialog
 import com.flipwise.app.ui.theme.*
 import com.flipwise.app.viewmodel.ProfileViewModel
@@ -46,7 +45,6 @@ fun LeaderboardScreen(
     
     var selectedTab by remember { mutableIntStateOf(0) }
     var showGoalDialog by remember { mutableStateOf(false) }
-    var showChallengeDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = GhostWhite,
@@ -58,19 +56,8 @@ fun LeaderboardScreen(
                     containerColor = GrapePop,
                     contentColor = Color.White,
                     shape = CircleShape,
-                    modifier = Modifier.padding(bottom = 16.dp)
                 ) {
                     Icon(Icons.Rounded.Flag, contentDescription = "Create Goal")
-                }
-                
-                // Optional: Challenge Creation FAB
-                FloatingActionButton(
-                    onClick = { showChallengeDialog = true },
-                    containerColor = CoralZest,
-                    contentColor = Color.White,
-                    shape = CircleShape
-                ) {
-                    Icon(Icons.Rounded.Add, contentDescription = "Create Challenge")
                 }
             }
         }
@@ -190,16 +177,6 @@ fun LeaderboardScreen(
         )
     }
 
-    if (showChallengeDialog) {
-        CreateChallengeDialog(
-            friends = friends.map { Friend(it.id, it.userId, it.username, it.displayName, it.avatar, it.status, it.addedAt, it.totalPoints, it.currentStreak, it.totalCardsStudied) }, // Map Friend to model if needed or assuming same
-            onDismiss = { showChallengeDialog = false },
-            onCreate = { challenge ->
-                viewModel.addChallenge(challenge)
-                showChallengeDialog = false
-            }
-        )
-    }
 }
 
 @Composable
