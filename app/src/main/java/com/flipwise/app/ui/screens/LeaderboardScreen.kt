@@ -3,6 +3,7 @@ package com.flipwise.app.ui.screens
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flipwise.app.data.model.Challenge
+import com.flipwise.app.data.model.Friend
 import com.flipwise.app.data.model.UserProfile
 import com.flipwise.app.ui.components.CreateChallengeDialog
 import com.flipwise.app.ui.components.CreateGoalDialog
