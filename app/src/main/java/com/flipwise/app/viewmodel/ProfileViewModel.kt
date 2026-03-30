@@ -113,6 +113,10 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         repository.signOut()
     }
 
+    suspend fun deleteAccount(): Result<Unit> {
+        return repository.deleteAccount()
+    }
+
     fun addFriend(username: String) {
         val trimmed = username.trim()
         if (trimmed.isBlank()) return

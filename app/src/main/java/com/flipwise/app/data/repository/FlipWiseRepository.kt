@@ -68,6 +68,30 @@ class FlipWiseRepository(context: Context) {
         }
     }
 
+    suspend fun deleteAccount(): Result<Unit> {
+        val user = auth.currentUser ?: return Result.failure(Exception("No user logged in"))
+        val currentUserId = userId
+        return try {
+            // 1. Remove from leaderboard (Public)
+            realtimeDb.child("leaderboard").child(currentUserId).removeValue().await()
+            
+            // 2. Remove all user data (Private)
+            realtimeDb.child("users").child(currentUserId).removeValue().await()
+            
+            // 3. Clear local DB
+            db.clearAllTables()
+            
+            // 4. Delete Auth account
+            user.delete().await()
+            
+            Result.success(Unit)
+        } catch (e: Exception) {
+            // If it fails because of sensitive dynamic (requires recent login), 
+            // the UI should ideally prompt for re-auth.
+            Result.failure(e)
+        }
+    }
+
     suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
         return try {
             auth.sendPasswordResetEmail(email).await()

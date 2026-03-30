@@ -31,10 +31,17 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onNavigateToProfile: () -> Unit = {},
     onLogout: () -> Unit = {},
-    viewModel: DeckViewModel = viewModel()
+    onAccountDeleted: () -> Unit = {},
+    viewModel: DeckViewModel = viewModel(),
+    profileViewModel: ProfileViewModel = viewModel()
 ) {
     var notificationsOn by remember { mutableStateOf(true) }
     var showClearConfirm by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var deleteConfirmText by remember { mutableStateOf("") }
+    val profile by profileViewModel.userProfile.collectAsState()
+    val scope = rememberCoroutineScope()
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -72,6 +79,21 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            if (errorMessage != null) {
+                Surface(
+                    color = CherryRed.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth().clickable { errorMessage = null }
+                ) {
+                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Error, contentDescription = null, tint = CherryRed)
+                        Spacer(Modifier.width(12.dp))
+                        Text(errorMessage!!, color = CherryRed, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                        Icon(Icons.Rounded.Close, contentDescription = null, tint = CherryRed, modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+
             // My Profile
             SettingsCard(
                 icon = Icons.Rounded.Person,
@@ -110,7 +132,7 @@ fun SettingsScreen(
                 iconContainerColor = CoralZest.copy(alpha = 0.1f),
                 iconColor = CoralZest,
                 title = "About FlipWise",
-                description = "Version 1.0.0",
+                description = "Version 1.1.0 (Advanced)",
                 content = {
                     Text(
                         text = "Master your knowledge, one flip at a time. FlipWise helps you learn effectively with spaced repetition and smart study techniques.",
@@ -169,11 +191,24 @@ fun SettingsScreen(
                 HorizontalDivider(color = GhostWhite, thickness = 1.dp, modifier = Modifier.padding(horizontal = 24.dp))
 
                 DangerActionRow(
-                    icon = Icons.Rounded.Delete,
+                    icon = Icons.Rounded.DeleteSweep,
                     iconColor = CherryRed,
                     title = "Clear All Data",
                     description = "Delete all decks, cards, and progress",
                     onClick = { showClearConfirm = true }
+                )
+
+                HorizontalDivider(color = GhostWhite, thickness = 1.dp, modifier = Modifier.padding(horizontal = 24.dp))
+
+                DangerActionRow(
+                    icon = Icons.Rounded.NoAccounts,
+                    iconColor = CherryRed,
+                    title = "Delete Account",
+                    description = "Permanently remove your account and data",
+                    onClick = { 
+                        deleteConfirmText = ""
+                        showDeleteConfirm = true 
+                    }
                 )
             }
 
@@ -195,7 +230,7 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showClearConfirm = false },
             title = { Text("Clear All Data?") },
-            text = { Text("This will permanently delete everything. This cannot be undone.") },
+            text = { Text("This will permanently delete everything from your account. This cannot be undone.") },
             confirmButton = {
                 Button(
                     onClick = {
@@ -207,6 +242,51 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showClearConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showDeleteConfirm) {
+        val requiredText = "delete ${profile.username}"
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete Account permanently?") },
+            text = { 
+                Column {
+                    Text("This will permanently remove your account, profile, decks, and all study progress across all devices.")
+                    Spacer(Modifier.height(16.dp))
+                    Text("To confirm, type the following:", fontWeight = FontWeight.Bold)
+                    Text(requiredText, modifier = Modifier.padding(vertical = 4.dp), color = CherryRed)
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = deleteConfirmText,
+                        onValueChange = { deleteConfirmText = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Type here") },
+                        isError = deleteConfirmText.isNotBlank() && deleteConfirmText != requiredText
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            val result = profileViewModel.deleteAccount()
+                            if (result.isSuccess) {
+                                showDeleteConfirm = false
+                                onAccountDeleted()
+                            } else {
+                                errorMessage = result.exceptionOrNull()?.message ?: "Failed to delete account. You may need to log in again for verification."
+                                showDeleteConfirm = false
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = CherryRed),
+                    enabled = deleteConfirmText == requiredText
+                ) { Text("Delete Account") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
             }
         )
     }
