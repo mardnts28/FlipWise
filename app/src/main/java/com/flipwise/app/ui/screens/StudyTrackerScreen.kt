@@ -67,6 +67,9 @@ fun StudyTrackerScreen(
     val consistency = (progress.currentStreak.toFloat() / 30f).coerceAtMost(1f)
     
     var showAchievementDialog by remember { mutableStateOf(false) }
+    var selectedAchievements by remember { mutableStateOf(unlockedAchievements) }
+    var selectedDate by remember { mutableStateOf<Long?>(null) }
+    
     val aiInsight by viewModel.aiInsight.collectAsState()
 
     Column(
@@ -126,8 +129,13 @@ fun StudyTrackerScreen(
                     Spacer(Modifier.height(16.dp))
                     
                     ActivityHeatmap(
-                        hasAchievements = unlockedAchievements.isNotEmpty(),
-                        onAchievementClick = { showAchievementDialog = true }
+                        sessions = sessions,
+                        achievements = unlockedAchievements,
+                        onDayClick = { date, dayAchievements -> 
+                            selectedDate = date
+                            selectedAchievements = dayAchievements
+                            showAchievementDialog = true
+                        }
                     )
                     
                     Spacer(Modifier.height(16.dp))
@@ -236,9 +244,10 @@ fun StudyTrackerScreen(
         }
     }
 
-    if (showAchievementDialog && unlockedAchievements.isNotEmpty()) {
+    if (showAchievementDialog) {
         AchievementsUnlockedDialog(
-            unlockedAchievements = unlockedAchievements,
+            unlockedAchievements = selectedAchievements,
+            selectedDate = selectedDate,
             onDismiss = { showAchievementDialog = false }
         )
     }
@@ -247,6 +256,7 @@ fun StudyTrackerScreen(
 @Composable
 fun AchievementsUnlockedDialog(
     unlockedAchievements: List<Achievement>,
+    selectedDate: Long? = null,
     onDismiss: () -> Unit
 ) {
     Dialog(onDismissRequest = onDismiss) {
@@ -263,15 +273,13 @@ fun AchievementsUnlockedDialog(
                 ) {
                     Column {
                         Text(
-                            "Achievements Unlocked",
+                            if (unlockedAchievements.isEmpty()) "Activity on this day" else "Achievements Unlocked",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF1E1B4B)
                         )
-                        val lastUnlocked = unlockedAchievements.maxByOrNull { it.unlockedAt ?: 0L }
-                        val dateText = lastUnlocked?.unlockedAt?.let {
-                            SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault()).format(Date(it))
-                        } ?: "Recently"
+                        val dateToShow = selectedDate ?: unlockedAchievements.maxByOrNull { it.unlockedAt ?: 0L }?.unlockedAt ?: System.currentTimeMillis()
+                        val dateText = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault()).format(Date(dateToShow))
                         
                         Text(
                             dateText,
@@ -287,17 +295,26 @@ fun AchievementsUnlockedDialog(
                 Spacer(Modifier.height(24.dp))
 
                 // Achievement List
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.verticalScroll(rememberScrollState()).weight(1f, fill = false)
-                ) {
-                    unlockedAchievements.forEach { achievement ->
-                        AchievementUnlockedItem(
-                            title = achievement.title,
-                            description = achievement.description,
-                            time = achievement.unlockedAt?.let { SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(it)) } ?: "--:--",
-                            icon = achievement.icon
-                        )
+                if (unlockedAchievements.isNotEmpty()) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.verticalScroll(rememberScrollState()).weight(1f, fill = false)
+                    ) {
+                        unlockedAchievements.forEach { achievement ->
+                            AchievementUnlockedItem(
+                                title = achievement.title,
+                                description = achievement.description,
+                                time = achievement.unlockedAt?.let { SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(it)) } ?: "--:--",
+                                icon = achievement.icon
+                            )
+                        }
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(120.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No achievements earned on this day.", color = Color.Gray, textAlign = TextAlign.Center)
                     }
                 }
 
@@ -317,7 +334,9 @@ fun AchievementsUnlockedDialog(
                         Icon(Icons.Default.EmojiEvents, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            "${unlockedAchievements.size} Achievement${if(unlockedAchievements.size > 1) "s" else ""} on this day!",
+                            if (unlockedAchievements.isNotEmpty()) 
+                                "${unlockedAchievements.size} Achievement${if(unlockedAchievements.size > 1) "s" else ""} on this day!"
+                            else "Keep studying to earn badges!",
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp
@@ -363,33 +382,51 @@ fun AchievementUnlockedItem(title: String, description: String, time: String, ic
 
 @Composable
 fun ActivityHeatmap(
-    hasAchievements: Boolean,
-    onAchievementClick: () -> Unit
+    sessions: List<com.flipwise.app.data.model.StudySession>,
+    achievements: List<com.flipwise.app.data.model.Achievement>,
+    onDayClick: (Long, List<com.flipwise.app.data.model.Achievement>) -> Unit
 ) {
     val days = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+    
+    // Group everything by day (ignoring time)
+    val calendar = Calendar.getInstance()
+    
+    fun getDayKey(timestamp: Long): String {
+        calendar.timeInMillis = timestamp
+        return "${calendar.get(Calendar.YEAR)}-${calendar.get(Calendar.DAY_OF_YEAR)}"
+    }
+    
+    val sessionMap = sessions.groupBy { getDayKey(it.date) }
+    val achievementMap = achievements.filter { it.unlockedAt != null }.groupBy { getDayKey(it.unlockedAt!!) }
+    
+    // Calculate columns: we show 14 weeks including current week
+    val today = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+    
+    // Find the Sunday of 13 weeks ago
+    val startDate = today.clone() as Calendar
+    startDate.add(Calendar.WEEK_OF_YEAR, -13)
+    while (startDate.get(Calendar.DAY_OF_WEEK) != Calendar.SUNDAY) {
+        startDate.add(Calendar.DAY_OF_YEAR, -1)
+    }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Day Labels with fixed width to prevent cutting and ensure alignment
+        // Day Labels
         Column(
             modifier = Modifier.width(28.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             days.forEach { day ->
-                Box(
-                    modifier = Modifier.height(12.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Text(
-                        text = day,
-                        fontSize = 9.sp, // Slightly smaller to ensure it fits
-                        color = Color.Gray,
-                        textAlign = TextAlign.Start,
-                        maxLines = 1,
-                        overflow = TextOverflow.Visible,
-                        softWrap = false
-                    )
+                Box(modifier = Modifier.height(12.dp), contentAlignment = Alignment.CenterStart) {
+                    Text(text = day, fontSize = 9.sp, color = Color.Gray)
                 }
             }
         }
@@ -397,33 +434,51 @@ fun ActivityHeatmap(
         Spacer(Modifier.width(8.dp))
         
         // Heatmap circles
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            repeat(13) { // Columns
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            repeat(14) { weekIndex ->
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    repeat(7) { // Cells
+                    repeat(7) { dayIndex ->
+                        val cellDate = startDate.clone() as Calendar
+                        cellDate.add(Calendar.DAY_OF_YEAR, weekIndex * 7 + dayIndex)
+                        
+                        val dayKey = getDayKey(cellDate.timeInMillis)
+                        val daySessions = sessionMap[dayKey] ?: emptyList()
+                        val dayAchievements = achievementMap[dayKey] ?: emptyList()
+                        
+                        val studyCount = daySessions.sumOf { it.cardsStudied }
+                        
+                        // Color based on studyCount
+                        val bgColor = when {
+                            studyCount == 0 -> Color(0xFFF0F0F5)
+                            studyCount < 10 -> Color(0xFFDDD2FB)
+                            studyCount < 30 -> Color(0xFFB99CF8)
+                            studyCount < 60 -> Color(0xFF9061F9)
+                            else -> Color(0xFF7C3AED)
+                        }
+                        
+                        val hasActivities = studyCount > 0 || dayAchievements.isNotEmpty()
+                        val isToday = getDayKey(System.currentTimeMillis()) == dayKey
+
                         Box(
                             modifier = Modifier
                                 .size(12.dp)
-                                .background(Color(0xFFF0F0F5), CircleShape)
+                                .background(bgColor, CircleShape)
+                                .then(
+                                    if (dayAchievements.isNotEmpty()) 
+                                        Modifier.border(1.2.dp, Color(0xFFFBBF24), CircleShape)
+                                    else if (isToday)
+                                        Modifier.border(1.dp, Color(0xFF10B981), CircleShape)
+                                    else Modifier
+                                )
+                                .clickable(enabled = hasActivities) { 
+                                    onDayClick(cellDate.timeInMillis, dayAchievements) 
+                                }
                         )
                     }
                 }
-            }
-            // Add a column with an achievement dot
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                repeat(6) {
-                    Box(modifier = Modifier.size(12.dp).background(Color(0xFFF0F0F5), CircleShape))
-                }
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .background(if (hasAchievements) Color(0xFF7C3AED) else Color(0xFFF0F0F5), CircleShape)
-                        .clickable(enabled = hasAchievements) { onAchievementClick() }
-                        .then(
-                            if (hasAchievements) Modifier.border(1.5.dp, Color(0xFFFBBF24), CircleShape)
-                            else Modifier
-                        )
-                )
             }
         }
     }

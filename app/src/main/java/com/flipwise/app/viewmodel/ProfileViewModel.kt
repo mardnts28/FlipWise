@@ -28,11 +28,6 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     val isUserLoggedIn: Boolean 
         get() = repository.isUserLoggedIn()
 
-    init {
-        // Initialization if needed
-    }
-
-
     suspend fun updateProfile(displayName: String, username: String, bio: String, avatar: String): Result<Unit> {
         return try {
             val current = userProfile.value
@@ -54,6 +49,10 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         return repository.syncProfile()
     }
 
+    suspend fun fullSync(): UserProfile? {
+        return repository.fullSync()
+    }
+
     suspend fun signIn(email: String, password: String): Result<Unit> {
         return repository.signIn(email, password)
     }
@@ -70,16 +69,28 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         return repository.sendPasswordResetEmail(email)
     }
 
+    suspend fun resendVerificationEmail(email: String, password: String): Result<Unit> {
+        return repository.resendVerificationEmail(email, password)
+    }
+
     suspend fun loginOrRegister(name: String, email: String): Result<Unit> {
         return try {
             val current = repository.syncProfile() ?: userProfile.value
-            val finalName = if (name.isNotBlank()) name else email.substringBefore("@")
+            val finalDisplayName = if (name.isNotBlank()) name else email.substringBefore("@")
+            
+            // If the user is new or hasn't set a username (default is "flipper"), 
+            // we use their name/email prefix as a default to avoid forcing them to the nickname screen
+            val finalUsername = if (current.username == "flipper" || current.username.isBlank()) {
+                finalDisplayName.lowercase().replace(" ", "_") + (100..999).random()
+            } else {
+                current.username
+            }
             
             repository.updateProfile(
                 current.copy(
                     id = repository.userId,
-                    displayName = finalName
-                    // We keep the old/default username so the navigation catches it and asks for a new one
+                    displayName = finalDisplayName,
+                    username = finalUsername
                 )
             )
             Result.success(Unit)

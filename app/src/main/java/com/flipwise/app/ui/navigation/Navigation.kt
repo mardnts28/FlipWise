@@ -60,7 +60,8 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                             }
                         }
                     } else {
-                        navController.navigate(Screen.Login.route) {
+                        // User not logged in, show onboarding first
+                        navController.navigate(Screen.Onboarding.route) {
                             popUpTo(Screen.Splash.route) { inclusive = true }
                         }
                     }
@@ -75,7 +76,7 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                 onNavigateToRegister = { navController.navigate(Screen.Register.route) },
                 onLoginSuccess = {
                     scope.launch {
-                        val profile = profileViewModel.syncProfile()
+                        val profile = profileViewModel.fullSync()
                         // Check if username (nickname) is set to default "flipper" or blank
                         if (profile == null || profile.username == "flipper" || profile.username.isBlank()) {
                             navController.navigate(Screen.CompleteProfile.route) {
@@ -129,7 +130,8 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
 
         composable(Screen.Onboarding.route) {
             OnboardingScreen(onComplete = {
-                navController.navigate(Screen.Home.route) {
+                // After onboarding, navigate to Login
+                navController.navigate(Screen.Login.route) {
                     popUpTo(Screen.Onboarding.route) { inclusive = true }
                 }
             })

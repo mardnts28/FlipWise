@@ -7,7 +7,8 @@ import com.google.gson.reflect.TypeToken
 
 data class GeneratedCard(
     val front: String,
-    val back: String
+    val back: String,
+    val options: List<String>? = null
 )
 
 class GeminiFlashcardGenerator {
@@ -27,16 +28,18 @@ You are an expert flashcard creator. Analyze the following text and create effec
 
 Rules:
 1. Create between 5 and $maxCards flashcards based on the content length and complexity.
-2. Each flashcard should have a "front" (question) and "back" (answer).
-3. Mix question types: definitions, concepts, key facts, and fill-in-the-blank.
+2. Mix question types: 
+   - Standard: "front" (question) and "back" (answer).
+   - Multiple Choice: "front" (question), "back" (correct answer), and "options" (a list of 4 strings including the correct answer).
+3. Create a mix of both types. For multiple choice, ensure the other 3 options are plausible but incorrect.
 4. Keep questions clear and concise.
 5. Keep answers brief but complete.
 6. Focus on the most important information.
 7. Do NOT include any markdown formatting in the questions or answers.
 
-IMPORTANT: Return ONLY a valid JSON array with no extra text, no markdown code blocks, no explanation. 
+IMPORTANT: Return ONLY a valid JSON array with no extra text.
 The format must be exactly:
-[{"front":"question here","back":"answer here"},{"front":"question here","back":"answer here"}]
+[{"front":"q1","back":"a1"},{"front":"q2","back":"a2","options":["a2","alt1","alt2","alt3"]}]
 
 Text to create flashcards from:
 ---

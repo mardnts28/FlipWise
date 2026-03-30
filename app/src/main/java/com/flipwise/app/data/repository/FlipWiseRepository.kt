@@ -61,11 +61,27 @@ class FlipWiseRepository(context: Context) {
 
     fun signOut() {
         auth.signOut()
+        // Clear local database to align user profiles and data correctly
+        @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
+        kotlinx.coroutines.GlobalScope.launch {
+            db.clearAllTables()
+        }
     }
 
     suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
         return try {
             auth.sendPasswordResetEmail(email).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun resendVerificationEmail(email: String, password: String): Result<Unit> {
+        return try {
+            val result = auth.signInWithEmailAndPassword(email, password).await()
+            result.user?.sendEmailVerification()?.await()
+            auth.signOut()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -132,12 +148,45 @@ class FlipWiseRepository(context: Context) {
     }
 
     suspend fun syncProfile(): UserProfile? {
+        if (!isUserLoggedIn()) return null
         return try {
             val snapshot = realtimeDb.child("users").child(userId).child("profile").get().await()
             val profile = snapshot.getValue(UserProfile::class.java)
             if (profile != null) {
                 profileDao.insertProfile(profile)
             }
+            profile
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun fullSync(): UserProfile? {
+        if (!isUserLoggedIn()) return null
+        return try {
+            // 1. Sync Profile
+            val profile = syncProfile()
+            
+            // 2. Sync Decks
+            val decksSnapshot = realtimeDb.child("users").child(userId).child("decks").get().await()
+            decksSnapshot.children.mapNotNull { it.getValue(Deck::class.java) }.forEach {
+                deckDao.insertDeck(it)
+            }
+            
+            // 3. Sync Cards
+            val cardsSnapshot = realtimeDb.child("users").child(userId).child("cards").get().await()
+            cardsSnapshot.children.mapNotNull { it.getValue(Flashcard::class.java) }.forEach {
+                flashcardDao.insertCard(it)
+            }
+            
+            // 4. Sync Sessions
+            val sessionsSnapshot = realtimeDb.child("users").child(userId).child("sessions").get().await()
+            sessionsSnapshot.children.mapNotNull { it.getValue(StudySession::class.java) }.forEach {
+                sessionDao.insertSession(it)
+            }
+            
+            // 5. Sync Achievements (if any)
+            // ...
             profile
         } catch (e: Exception) {
             null

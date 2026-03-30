@@ -171,52 +171,134 @@ fun StudyModeScreen(
                 shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
                 color = Color.White
             ) {
-                if (!isFlipped) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(48.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("Tap the card to reveal the answer", color = Color.Gray, fontSize = 16.sp)
-                    }
-                } else {
+                val options = currentCard.options?.split("|")
+                if (!options.isNullOrEmpty()) {
+                    // Multiple Choice Mode
+                    var selectedChoice by remember(currentCard.id) { mutableStateOf<String?>(null) }
+                    
                     Column(
                         modifier = Modifier.padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("How well did you know this?", color = Color.Gray, fontSize = 15.sp)
-                        Spacer(Modifier.height(20.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        Text(
+                            if (selectedChoice == null) "Select the correct answer" 
+                            else if (selectedChoice == currentCard.back) "🎉 Correct!" 
+                            else "❌ Incorrect. The answer is: ${currentCard.back}",
+                            color = if (selectedChoice == null) Color.Gray 
+                                    else if (selectedChoice == currentCard.back) Color(0xFF10B981) 
+                                    else Color(0xFFF43F5E),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        
+                        Spacer(Modifier.height(16.dp))
+                        
+                        options.forEach { option ->
+                            val isCorrect = option == currentCard.back
+                            val isSelected = selectedChoice == option
+                            
+                            Button(
+                                onClick = { if (selectedChoice == null) selectedChoice = option },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                                    .height(56.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = when {
+                                        selectedChoice == null -> Color(0xFFF3F4F6)
+                                        isSelected && isCorrect -> Color(0xFF10B981)
+                                        isSelected && !isCorrect -> Color(0xFFF43F5E)
+                                        selectedChoice != null && isCorrect -> Color(0xFF10B981).copy(alpha = 0.6f)
+                                        else -> Color(0xFFF3F4F6)
+                                    },
+                                    contentColor = if (selectedChoice != null && (isSelected || isCorrect)) Color.White else Color(0xFF1E1B4B)
+                                ),
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                            ) {
+                                Text(option, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                            }
+                        }
+                        
+                        if (selectedChoice != null) {
+                            Spacer(Modifier.height(16.dp))
+                            Button(
+                                onClick = {
+                                    if (selectedChoice == currentCard.back) {
+                                        easyCount++
+                                        totalPoints += 10
+                                    } else {
+                                        forgotCount++
+                                        totalPoints += 1
+                                    }
+                                    
+                                    if (currentIndex + 1 < studyCards!!.size) {
+                                        currentIndex++
+                                        isFlipped = false
+                                        selectedChoice = null
+                                    } else {
+                                        isFinished = true
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth().height(56.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
+                            ) {
+                                Text("Next Card", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                } else {
+                    // Standard Flip Mode
+                    if (!isFlipped) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(48.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            StudyRatingButton("😟", "Forgot", Color(0xFFF43F5E), Modifier.weight(1f)) {
-                                forgotCount++
-                                totalPoints += 1
-                                if (currentIndex + 1 < studyCards!!.size) {
-                                    currentIndex++
-                                    isFlipped = false
-                                } else {
-                                    isFinished = true
+                            Text("Tap the card to reveal the answer", color = Color.Gray, fontSize = 16.sp)
+                        }
+                    } else {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("How well did you know this?", color = Color.Gray, fontSize = 15.sp)
+                            Spacer(Modifier.height(20.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                StudyRatingButton("😟", "Forgot", Color(0xFFF43F5E), Modifier.weight(1f)) {
+                                    forgotCount++
+                                    totalPoints += 1
+                                    if (currentIndex + 1 < studyCards!!.size) {
+                                        currentIndex++
+                                        isFlipped = false
+                                    } else {
+                                        isFinished = true
+                                    }
                                 }
-                            }
-                            StudyRatingButton("🧐", "Hard", Color(0xFFF97316), Modifier.weight(1f)) {
-                                hardCount++
-                                totalPoints += 5
-                                if (currentIndex + 1 < studyCards!!.size) {
-                                    currentIndex++
-                                    isFlipped = false
-                                } else {
-                                    isFinished = true
+                                StudyRatingButton("🧐", "Hard", Color(0xFFF97316), Modifier.weight(1f)) {
+                                    hardCount++
+                                    totalPoints += 5
+                                    if (currentIndex + 1 < studyCards!!.size) {
+                                        currentIndex++
+                                        isFlipped = false
+                                    } else {
+                                        isFinished = true
+                                    }
                                 }
-                            }
-                            StudyRatingButton("😊", "Easy", Color(0xFF10B981), Modifier.weight(1f)) {
-                                easyCount++
-                                totalPoints += 10
-                                if (currentIndex + 1 < studyCards!!.size) {
-                                    currentIndex++
-                                    isFlipped = false
-                                } else {
-                                    isFinished = true
+                                StudyRatingButton("😊", "Easy", Color(0xFF10B981), Modifier.weight(1f)) {
+                                    easyCount++
+                                    totalPoints += 10
+                                    if (currentIndex + 1 < studyCards!!.size) {
+                                        currentIndex++
+                                        isFlipped = false
+                                    } else {
+                                        isFinished = true
+                                    }
                                 }
                             }
                         }

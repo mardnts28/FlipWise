@@ -10,6 +10,7 @@ import com.google.android.gms.common.api.ApiException
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -29,12 +30,14 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.flipwise.app.R
 import com.flipwise.app.ui.theme.*
 import com.flipwise.app.ui.components.FlipWiseTextField
 import com.flipwise.app.viewmodel.ProfileViewModel
@@ -108,9 +111,10 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(40.dp))
             
             Box(contentAlignment = Alignment.Center) {
-                Text(
-                    text = "🎴",
-                    fontSize = 80.sp
+                Image(
+                    painter = painterResource(id = R.drawable.app_logo),
+                    contentDescription = "FlipWise Logo",
+                    modifier = Modifier.size(140.dp)
                 )
                 
                 // Floating Sparkle Badge
@@ -209,29 +213,53 @@ fun LoginScreen(
                         enter = fadeIn() + expandVertically(),
                         exit = fadeOut() + shrinkVertically()
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(
-                                    Brush.horizontalGradient(listOf(Color(0xFFFEF2F2), Color(0xFFFEF2F2).copy(alpha = 0.5f))),
-                                    RoundedCornerShape(16.dp)
-                                )
-                                .border(2.dp, Color(0xFFFECACA), RoundedCornerShape(16.dp))
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
+                        Column {
+                            Row(
                                 modifier = Modifier
-                                    .size(8.dp)
-                                    .background(Color(0xFFEF4444), CircleShape)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = error ?: "",
-                                color = Color(0xFFB91C1C),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium
-                            )
+                                    .fillMaxWidth()
+                                    .background(
+                                        Brush.horizontalGradient(listOf(Color(0xFFFEF2F2), Color(0xFFFEF2F2).copy(alpha = 0.5f))),
+                                        RoundedCornerShape(16.dp)
+                                    )
+                                    .border(2.dp, Color(0xFFFECACA), RoundedCornerShape(16.dp))
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .background(Color(0xFFEF4444), CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = error ?: "",
+                                    color = Color(0xFFB91C1C),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+
+                            if (error?.contains("verify", ignoreCase = true) == true) {
+                                TextButton(
+                                    onClick = {
+                                        isLoading = true
+                                        error = null
+                                        scope.launch {
+                                            val result = profileViewModel.resendVerificationEmail(email.trim(), password.trim())
+                                            isLoading = false
+                                            if (result.isSuccess) {
+                                                successMessage = "Verification email resent! Check your inbox."
+                                            } else {
+                                                error = "Failed to resend: ${result.exceptionOrNull()?.message}"
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.align(Alignment.End).padding(top = 4.dp)
+                                ) {
+                                    Text("Resend Verification Email", color = GrapePop, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
                     }
 

@@ -197,10 +197,10 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
 
     // ─── Cards ───────────────────────────────────────────────────
 
-    fun addFlashcard(deckId: String, front: String, back: String) {
+    fun addFlashcard(deckId: String, front: String, back: String, options: String? = null) {
         viewModelScope.launch {
             repository.addFlashcard(
-                Flashcard(id = UUID.randomUUID().toString(), deckId = deckId, front = front, back = back)
+                Flashcard(id = UUID.randomUUID().toString(), deckId = deckId, front = front, back = back, options = options)
             )
             val count = cardDao.getCardCountForDeck(deckId)
             deckDao.getDeckById(deckId)?.let { deck ->
@@ -319,7 +319,8 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
                                             id = UUID.randomUUID().toString(),
                                             deckId = deckId,
                                             front = card.front,
-                                            back = card.back
+                                            back = card.back,
+                                            options = card.options?.joinToString("|")
                                         )
                                     )
                                     savedCount++

@@ -63,36 +63,34 @@ fun OnboardingScreen(onComplete: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 32.dp)
-                .verticalScroll(rememberScrollState()),
+                .padding(horizontal = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Spacer(Modifier.height(80.dp)) // Offset for the skip button
             val slide = slides[currentSlide]
             
             Surface(
-                modifier = Modifier.size(140.dp),
+                modifier = Modifier.size(160.dp),
                 shape = CircleShape,
-                color = slide.iconBg
+                color = slide.iconBg.copy(alpha = 0.9f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = slide.icon,
                         contentDescription = null,
-                        modifier = Modifier.size(64.dp),
+                        modifier = Modifier.size(72.dp),
                         tint = Color.White
                     )
                 }
             }
 
-            Spacer(Modifier.height(48.dp))
+            Spacer(Modifier.height(56.dp))
             
             Text(
                 text = slide.title,
-                fontSize = 32.sp,
+                fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF3F3D56),
+                color = NavyInk,
                 textAlign = TextAlign.Center
             )
             
@@ -101,50 +99,69 @@ fun OnboardingScreen(onComplete: () -> Unit) {
             Text(
                 text = slide.description,
                 fontSize = 16.sp,
-                color = Color(0xFF7D7D91),
+                color = NavyInk60,
                 textAlign = TextAlign.Center,
                 lineHeight = 24.sp
             )
-            Spacer(Modifier.height(160.dp)) // Space for footer
+            
+            Spacer(Modifier.height(80.dp))
         }
 
         Column(
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 32.dp),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 48.dp)
+                .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 slides.forEachIndexed { index, _ ->
                     Box(
                         modifier = Modifier
                             .height(8.dp)
                             .width(if (index == currentSlide) 32.dp else 8.dp)
                             .background(
-                                color = if (index == currentSlide) Color(0xFF7C3AED) else Color(0xFFD1C4E9),
+                                color = if (index == currentSlide) GrapePop else GrapePop.copy(alpha = 0.2f),
                                 shape = CircleShape
                             )
                     )
                 }
             }
             
-            Spacer(Modifier.height(48.dp))
+            Spacer(Modifier.height(40.dp))
 
             Button(
-                onClick = { if (currentSlide < slides.size - 1) currentSlide++ else onComplete() },
-                modifier = Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 16.dp),
+                onClick = { 
+                    if (currentSlide < slides.size - 1) {
+                        currentSlide++ 
+                    } else {
+                        onComplete() 
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .padding(horizontal = 32.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
+                colors = ButtonDefaults.buttonColors(containerColor = GrapePop)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
                     Text(
                         text = if (currentSlide < slides.size - 1) "Next" else "Get Started",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
                     Spacer(Modifier.width(8.dp))
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                         contentDescription = null,
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(12.dp)
                     )
                 }
             }

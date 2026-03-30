@@ -6,8 +6,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -169,8 +171,8 @@ fun DeckDetailScreen(
     if (showAddCardDialog) {
         AddFlashcardDialog(
             onDismiss = { showAddCardDialog = false },
-            onAdd = { front, back ->
-                viewModel.addFlashcard(deckId, front, back)
+            onAdd = { front, back, options ->
+                viewModel.addFlashcard(deckId, front, back, options)
                 showAddCardDialog = false
             }
         )
@@ -194,6 +196,18 @@ fun CardListItem(card: Flashcard, onDelete: () -> Unit) {
             }
             Text(card.front, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
             
+            if (!card.options.isNullOrBlank()) {
+                Spacer(Modifier.height(12.dp))
+                Text("Choices", fontSize = 12.sp, color = Color.Gray)
+                card.options.split("|").forEach { option ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
+                        Box(Modifier.size(6.dp).background(Color(0xFF7C3AED), CircleShape))
+                        Spacer(Modifier.width(8.dp))
+                        Text(option, fontSize = 14.sp, color = Color(0xFF1E1B4B))
+                    }
+                }
+            }
+
             Spacer(Modifier.height(16.dp))
             
             Text("Back", fontSize = 12.sp, color = Color.Gray)
@@ -235,13 +249,23 @@ fun EmptyCardsView(onAddClick: () -> Unit) {
             color = Color.Gray,
             textAlign = TextAlign.Center
         )
+        Spacer(Modifier.height(24.dp))
+        Button(
+            onClick = onAddClick,
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
+        ) {
+            Text("Add Flashcard", fontWeight = FontWeight.Bold)
+        }
     }
 }
 
 @Composable
-fun AddFlashcardDialog(onDismiss: () -> Unit, onAdd: (String, String) -> Unit) {
+fun AddFlashcardDialog(onDismiss: () -> Unit, onAdd: (String, String, String?) -> Unit) {
     var front by remember { mutableStateOf("") }
     var back by remember { mutableStateOf("") }
+    val choices = remember { mutableStateListOf<String>() }
+    var currentChoice by remember { mutableStateOf("") }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -251,7 +275,7 @@ fun AddFlashcardDialog(onDismiss: () -> Unit, onAdd: (String, String) -> Unit) {
             modifier = Modifier.fillMaxSize(),
             color = Color.White
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 Surface(color = Color(0xFF7C3AED), modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -266,7 +290,7 @@ fun AddFlashcardDialog(onDismiss: () -> Unit, onAdd: (String, String) -> Unit) {
                 }
 
                 Column(
-                    modifier = Modifier.padding(24.dp).weight(1f)
+                    modifier = Modifier.padding(24.dp)
                 ) {
                     Text("Front (Question)", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
                     Spacer(Modifier.height(8.dp))
@@ -274,7 +298,7 @@ fun AddFlashcardDialog(onDismiss: () -> Unit, onAdd: (String, String) -> Unit) {
                         value = front,
                         onValueChange = { if (it.length <= 500) front = it },
                         placeholder = { Text("What do you want to remember?", color = Color.LightGray) },
-                        modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(16.dp)),
+                        modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(16.dp)),
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color(0xFFF9F9FB),
                             unfocusedContainerColor = Color(0xFFF9F9FB),
@@ -282,22 +306,16 @@ fun AddFlashcardDialog(onDismiss: () -> Unit, onAdd: (String, String) -> Unit) {
                             unfocusedIndicatorColor = Color.Transparent
                         )
                     )
-                    Text(
-                        text = "${front.length}/500 characters",
-                        fontSize = 12.sp,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-
+                    
                     Spacer(Modifier.height(24.dp))
 
-                    Text("Back (Answer)", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+                    Text("Back (Correct Answer)", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
                     Spacer(Modifier.height(8.dp))
                     TextField(
                         value = back,
                         onValueChange = { if (it.length <= 500) back = it },
-                        placeholder = { Text("The answer or explanation", color = Color.LightGray) },
-                        modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(16.dp)),
+                        placeholder = { Text("The correct answer", color = Color.LightGray) },
+                        modifier = Modifier.fillMaxWidth().height(80.dp).clip(RoundedCornerShape(16.dp)),
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color(0xFFF9F9FB),
                             unfocusedContainerColor = Color(0xFFF9F9FB),
@@ -305,50 +323,54 @@ fun AddFlashcardDialog(onDismiss: () -> Unit, onAdd: (String, String) -> Unit) {
                             unfocusedIndicatorColor = Color.Transparent
                         )
                     )
-                    Text(
-                        text = "${back.length}/500 characters",
-                        fontSize = 12.sp,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
+
+                    Spacer(Modifier.height(24.dp))
+                    
+                    Text("Optional choices (Split study mode)", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+                    Spacer(Modifier.height(8.dp))
+                    
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextField(
+                            value = currentChoice,
+                            onValueChange = { currentChoice = it },
+                            placeholder = { Text("Add incorrect option", color = Color.LightGray) },
+                            modifier = Modifier.weight(1f).height(56.dp).clip(RoundedCornerShape(16.dp)),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color(0xFFF9F9FB),
+                                unfocusedContainerColor = Color(0xFFF9F9FB),
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            )
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        IconButton(
+                            onClick = { 
+                                if (currentChoice.isNotBlank()) {
+                                    choices.add(currentChoice)
+                                    currentChoice = ""
+                                }
+                            },
+                            modifier = Modifier.background(Color(0xFF7C3AED), CircleShape)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White)
+                        }
+                    }
+                    
+                    Spacer(Modifier.height(12.dp))
+                    
+                    choices.forEachIndexed { index, choice ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).background(Color(0xFFF1F1F4), RoundedCornerShape(8.dp)).padding(8.dp)
+                        ) {
+                            Text(choice, modifier = Modifier.weight(1f), fontSize = 14.sp)
+                            IconButton(onClick = { choices.removeAt(index) }, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.Gray)
+                            }
+                        }
+                    }
 
                     Spacer(Modifier.height(32.dp))
-
-                    Text("Preview", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
-                    Spacer(Modifier.height(12.dp))
-                    
-                    Surface(
-                        modifier = Modifier.fillMaxWidth().height(100.dp),
-                        shape = RoundedCornerShape(20.dp),
-                        color = Color(0xFFF0E6FF)
-                    ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = if (front.isBlank()) "Front side preview" else front,
-                                textAlign = TextAlign.Center,
-                                color = if (front.isBlank()) Color(0xFF1E1B4B).copy(alpha = 0.6f) else Color(0xFF1E1B4B)
-                            )
-                        }
-                    }
-                    
-                    Spacer(Modifier.height(12.dp))
-                    
-                    Surface(
-                        modifier = Modifier.fillMaxWidth().height(100.dp),
-                        shape = RoundedCornerShape(20.dp),
-                        border = BorderStroke(1.dp, Color(0xFFF1F1F4)),
-                        color = Color.White
-                    ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = if (back.isBlank()) "Back side preview" else back,
-                                textAlign = TextAlign.Center,
-                                color = if (back.isBlank()) Color(0xFF1E1B4B).copy(alpha = 0.6f) else Color(0xFF1E1B4B)
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.weight(1f))
 
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
@@ -363,7 +385,10 @@ fun AddFlashcardDialog(onDismiss: () -> Unit, onAdd: (String, String) -> Unit) {
                             Text("Cancel", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
                         }
                         Button(
-                            onClick = { onAdd(front, back) },
+                            onClick = { 
+                                val opts = if (choices.isNotEmpty()) (choices + back).shuffled().joinToString("|") else null
+                                onAdd(front, back, opts) 
+                            },
                             modifier = Modifier.weight(1f).height(56.dp),
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6D28D9)),
@@ -372,7 +397,7 @@ fun AddFlashcardDialog(onDismiss: () -> Unit, onAdd: (String, String) -> Unit) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(8.dp))
-                                Text("Add Card", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                Text("Save", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

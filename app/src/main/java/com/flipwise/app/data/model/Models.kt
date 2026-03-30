@@ -26,6 +26,7 @@ data class Flashcard(
     val deckId: String,
     val front: String,
     val back: String,
+    val options: String? = null, // Pipe-separated choices
     val difficulty: String = "medium",
     val nextReview: Long = System.currentTimeMillis(),
     val reviews: Int = 0,
@@ -71,8 +72,8 @@ data class UserStats(
 @Entity(tableName = "user_profile")
 data class UserProfile(
     @PrimaryKey val id: String = "local_user",
-    val username: String = "",
-    val displayName: String = "",
+    val username: String = "flipper",
+    val displayName: String = "FlipWise User",
     val avatar: String = "🎓",
     val bio: String = "Learning every day!",
     val joinedAt: Long = System.currentTimeMillis(),
@@ -114,7 +115,7 @@ data class Challenge(
 ) : Parcelable
 
 sealed class AiGenerationState {
-    data object Idle : AiGenerationState()
+    object Idle : AiGenerationState()
     data class Loading(val message: String) : AiGenerationState()
     data class Success(val cardsGenerated: Int) : AiGenerationState()
     data class Error(val message: String) : AiGenerationState()
