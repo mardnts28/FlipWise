@@ -8,9 +8,40 @@ import com.flipwise.app.data.repository.FlipWiseRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
+import com.flipwise.app.data.security.RateLimiter
 
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = FlipWiseRepository(application)
+    private val auditLogDao = com.flipwise.app.data.database.AppDatabase.getDatabase(application).auditLogDao()
+
+    private fun logAction(action: String, details: String = "") {
+        viewModelScope.launch {
+            val uid = repository.userId ?: "anonymous"
+
+            // Save locally to Room
+            auditLogDao.log(com.flipwise.app.data.model.AuditLog(
+                userId = uid,
+                action = action,
+                details = details
+            ))
+
+            // Save to Firebase Firestore (cloud)
+            try {
+                com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    .collection("audit_logs")
+                    .add(mapOf(
+                        "userId" to uid,
+                        "action" to action,
+                        "details" to details,
+                        "timestamp" to System.currentTimeMillis()
+                    ))
+            } catch (e: Exception) {
+                android.util.Log.e("AUDIT_LOG", "Failed to save to Firestore: ${e.message}")
+            }
+
+            android.util.Log.d("AUDIT_LOG", "✅ Logged: $action | $details")
+        }
+    }
 
     val userProfile: StateFlow<UserProfile> = repository.userProfile
         .map { it ?: UserProfile() }
@@ -39,6 +70,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 avatar = avatar
             )
             repository.updateProfile(profileToSave)
+            logAction("PROFILE_UPDATED", "displayName=$displayName username=$username")
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -54,11 +86,29 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     }
 
     suspend fun signIn(email: String, password: String): Result<Unit> {
-        return repository.signIn(email, password)
+        // rate limiting (new)
+        if (!RateLimiter.isAllowed("LOGIN", maxCount = 5, windowMs = 5 * 60 * 1000)) {
+            return Result.failure(Exception("Too many login attempts. Please wait a few minutes."))
+        }
+        return repository.signIn(email, password).also {
+            if (it.isSuccess) {
+                logAction("LOGIN", "email=$email")  // audit log (from before)
+                RateLimiter.reset("LOGIN")           // rate limiting (new)
+            }
+        }
     }
 
     suspend fun signUp(email: String, password: String): Result<Unit> {
-        return repository.signUp(email, password)
+        // Max 3 sign up attempts per 10 minutes
+        if (!RateLimiter.isAllowed("SIGN_UP", maxCount = 3, windowMs = 10 * 60 * 1000)) {
+            return Result.failure(Exception("Too many sign up attempts. Please wait a few minutes."))
+        }
+        return repository.signUp(email, password).also {
+            if (it.isSuccess) {
+                logAction("SIGN_UP", "email=$email")
+                RateLimiter.reset("SIGN_UP")
+            }
+        }
     }
 
     suspend fun signInWithGoogle(idToken: String): Result<Unit> {
@@ -104,10 +154,12 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun signOut() {
+        logAction("LOGOUT")
         repository.signOut()
     }
 
     suspend fun deleteAccount(): Result<Unit> {
+        logAction("DELETE_ACCOUNT", "user requested account deletion")
         return repository.deleteAccount()
     }
 
@@ -121,12 +173,14 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 repository.addFriend(targetProfile.id, targetProfile)
             }
         }
+        logAction("FRIEND_ADDED", "username=$trimmed")
     }
 
     fun removeFriend(friendId: String) {
         viewModelScope.launch { 
             com.flipwise.app.data.database.AppDatabase.getDatabase(getApplication()).friendDao().deleteFriend(friendId) 
         }
+        logAction("FRIEND_REMOVED", "friendId=$friendId")
     }
 
     fun addChallenge(challenge: Challenge) {

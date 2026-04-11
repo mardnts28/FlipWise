@@ -29,6 +29,7 @@ import com.flipwise.app.viewmodel.ProfileViewModel
 import kotlinx.coroutines.launch
 
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -46,6 +47,7 @@ fun SettingsScreen(
     val profile by profileViewModel.userProfile.collectAsState()
     val scope = rememberCoroutineScope()
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Scaffold(
         topBar = {
@@ -118,12 +120,12 @@ fun SettingsScreen(
                 trailingContent = {
                     Switch(
                         checked = notificationsOn,
-                        onCheckedChange = { 
-                            notificationsOn = it 
+                        onCheckedChange = {
+                            notificationsOn = it
                             if (it) {
-                                com.flipwise.app.data.worker.StudyReminderWorker.schedule(androidx.compose.ui.platform.LocalContext.current)
+                                com.flipwise.app.data.worker.StudyReminderWorker.schedule(context)
                             } else {
-                                com.flipwise.app.data.worker.StudyReminderWorker.cancel(androidx.compose.ui.platform.LocalContext.current)
+                                com.flipwise.app.data.worker.StudyReminderWorker.cancel(context)
                             }
                         },
                         colors = SwitchDefaults.colors(

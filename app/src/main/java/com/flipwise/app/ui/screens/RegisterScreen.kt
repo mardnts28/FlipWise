@@ -31,6 +31,106 @@ import com.flipwise.app.R
 import com.flipwise.app.ui.theme.*
 import com.flipwise.app.ui.components.FlipWiseTextField
 
+fun calculatePasswordStrength(password: String): Int {
+    if (password.isEmpty()) return 0
+    var score = 0
+    if (password.length >= 8) score++
+    if (password.any { it.isUpperCase() }) score++
+    if (password.any { it.isDigit() }) score++
+    if (password.any { "!@#\$%^&*()_+-=[]{}|;':\",./<>?".contains(it) }) score++
+    return score // 0-4
+}
+
+@Composable
+fun PasswordStrengthMeter(password: String) {
+    val strength = calculatePasswordStrength(password)
+
+    val (label, color) = when (strength) {
+        0 -> "" to Color.Transparent
+        1 -> "Weak" to Color(0xFFEF4444)
+        2 -> "Fair" to Color(0xFFF97316)
+        3 -> "Good" to Color(0xFFEAB308)
+        4 -> "Strong" to Color(0xFF22C55E)
+        else -> "" to Color.Transparent
+    }
+
+    if (password.isEmpty()) return
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+    ) {
+        // 4 segment bar
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            repeat(4) { index ->
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(
+                            if (index < strength) color
+                            else NavyInk.copy(alpha = 0.1f)
+                        )
+                )
+            }
+        }
+
+        // Label
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Password strength",
+                fontSize = 12.sp,
+                color = NavyInk.copy(alpha = 0.5f)
+            )
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+        }
+
+        // Requirements checklist
+        if (strength < 4) {
+            Spacer(modifier = Modifier.height(8.dp))
+            val checks = listOf(
+                "At least 8 characters" to (password.length >= 8),
+                "One uppercase letter" to password.any { it.isUpperCase() },
+                "One number" to password.any { it.isDigit() },
+                "One special character (!@#\$...)" to password.any { "!@#\$%^&*()_+-=[]{}|;':\",./<>?".contains(it) }
+            )
+            checks.forEach { (text, met) ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(vertical = 2.dp)
+                ) {
+                    Text(
+                        text = if (met) "✓ " else "• ",
+                        fontSize = 12.sp,
+                        color = if (met) Color(0xFF22C55E) else NavyInk.copy(alpha = 0.4f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = text,
+                        fontSize = 12.sp,
+                        color = if (met) Color(0xFF22C55E) else NavyInk.copy(alpha = 0.4f)
+                    )
+                }
+            }
+        }
+    }
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
@@ -50,7 +150,7 @@ fun RegisterScreen(
     val profileViewModel: com.flipwise.app.viewmodel.ProfileViewModel = viewModel()
 
     val infiniteTransition = rememberInfiniteTransition(label = "background")
-    
+
     val blob1Pos by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
@@ -101,14 +201,14 @@ fun RegisterScreen(
         ) {
             // Header Section
             Spacer(modifier = Modifier.height(40.dp))
-            
+
             Box(contentAlignment = Alignment.Center) {
                 Image(
                     painter = painterResource(id = R.drawable.app_logo),
                     contentDescription = "FlipWise Logo",
                     modifier = Modifier.size(140.dp)
                 )
-                
+
                 // Floating Sparkle Badge
                 Box(
                     modifier = Modifier
@@ -275,12 +375,13 @@ fun RegisterScreen(
                         FlipWiseTextField(
                             value = password,
                             onValueChange = { password = it },
-                            placeholder = "At least 6 characters",
+                            placeholder = "Enter a strong password",
                             leadingIcon = Icons.Rounded.Lock,
                             isPassword = true,
                             showPassword = showPassword,
                             onPasswordToggle = { showPassword = !showPassword }
                         )
+                        PasswordStrengthMeter(password = password)
                     }
 
                     // Confirm Password Field
@@ -310,8 +411,8 @@ fun RegisterScreen(
                                 error = "Please fill in all fields"
                             } else if (!email.contains("@")) {
                                 error = "Please enter a valid email"
-                            } else if (password.length < 6) {
-                                error = "Password must be at least 6 characters"
+                            } else if (calculatePasswordStrength(password) < 3) {
+                                error = "Password is too weak. Add uppercase, numbers, and special characters."
                             } else if (password != confirmPassword) {
                                 error = "Passwords do not match"
                             } else {
@@ -399,7 +500,7 @@ fun RegisterScreen(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(40.dp))
         }
     }
