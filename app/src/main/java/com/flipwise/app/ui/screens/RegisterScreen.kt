@@ -38,12 +38,16 @@ fun RegisterScreen(
     onRegisterSuccess: (String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
+    var nickname by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
     var showConfirmPassword by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val profileViewModel: com.flipwise.app.viewmodel.ProfileViewModel = viewModel()
 
     val infiniteTransition = rememberInfiniteTransition(label = "background")
     
@@ -224,6 +228,23 @@ fun RegisterScreen(
                         )
                     }
 
+                    // Nickname Field
+                    Column {
+                        Text(
+                            text = "Nickname (Username)",
+                            color = NavyInk,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        FlipWiseTextField(
+                            value = nickname,
+                            onValueChange = { nickname = it },
+                            placeholder = "flipper123",
+                            leadingIcon = Icons.Rounded.AlternateEmail
+                        )
+                    }
+
                     // Email Field
                     Column {
                         Text(
@@ -285,7 +306,7 @@ fun RegisterScreen(
                     // Submit Button
                     Button(
                         onClick = {
-                            if (name.isBlank() || email.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
+                            if (name.isBlank() || nickname.isBlank() || email.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
                                 error = "Please fill in all fields"
                             } else if (!email.contains("@")) {
                                 error = "Please enter a valid email"
@@ -294,9 +315,22 @@ fun RegisterScreen(
                             } else if (password != confirmPassword) {
                                 error = "Passwords do not match"
                             } else {
-                                onRegisterSuccess(email)
+                                isLoading = true
+                                error = null
+                                scope.launch {
+                                    val result = profileViewModel.signUp(email.trim(), password.trim())
+                                    if (result.isSuccess) {
+                                        // Initialize profile
+                                        profileViewModel.register(nickname.trim(), name.trim())
+                                        onRegisterSuccess(email)
+                                    } else {
+                                        error = result.exceptionOrNull()?.message ?: "Registration failed"
+                                    }
+                                    isLoading = false
+                                }
                             }
                         },
+                        enabled = !isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(64.dp),
@@ -320,19 +354,23 @@ fun RegisterScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center
                             ) {
-                                Text(
-                                    text = "Create Account",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Icon(
-                                    imageVector = Icons.Rounded.ArrowForward,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                                if (isLoading) {
+                                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                                } else {
+                                    Text(
+                                        text = "Create Account",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Icon(
+                                        imageVector = Icons.Rounded.ArrowForward,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                             }
                         }
                     }

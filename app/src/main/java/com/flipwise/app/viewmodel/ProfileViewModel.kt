@@ -78,19 +78,13 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             val current = repository.syncProfile() ?: userProfile.value
             val finalDisplayName = if (name.isNotBlank()) name else email.substringBefore("@")
             
-            // If the user is new or hasn't set a username (default is "flipper"), 
-            // we use their name/email prefix as a default to avoid forcing them to the nickname screen
-            val finalUsername = if (current.username == "flipper" || current.username.isBlank()) {
-                finalDisplayName.lowercase().replace(" ", "_") + (100..999).random()
-            } else {
-                current.username
-            }
-            
+            // We only update the display name if it's currently default.
+            // We leave the username as is (usually "flipper" for new accounts)
+            // so Navigation.kt can redirect Google users to the nickname entry screen.
             repository.updateProfile(
                 current.copy(
                     id = repository.userId,
-                    displayName = finalDisplayName,
-                    username = finalUsername
+                    displayName = if (current.displayName == "FlipWise User") finalDisplayName else current.displayName
                 )
             )
             Result.success(Unit)

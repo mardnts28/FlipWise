@@ -26,17 +26,14 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flipwise.app.data.model.StudySession
 import com.flipwise.app.data.model.Friend
-import com.flipwise.app.data.model.Challenge
 import com.flipwise.app.viewmodel.ProfileViewModel
 import java.text.SimpleDateFormat
 import java.util.*
-import com.flipwise.app.ui.components.CreateChallengeDialog
 import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileScreen(
     onNavigateBack: () -> Unit, 
-    onNavigateToChallenge: (String) -> Unit = {},
     viewModel: ProfileViewModel = viewModel()
 ) {
     val profile by viewModel.userProfile.collectAsState()
@@ -45,7 +42,6 @@ fun ProfileScreen(
     val scope = rememberCoroutineScope()
     
     var selectedTab by remember { mutableIntStateOf(0) }
-    var showCreateChallenge by remember { mutableStateOf(false) }
     var showAddFriend by remember { mutableStateOf(false) }
     var showEditProfile by remember { mutableStateOf(false) }
 
@@ -150,13 +146,6 @@ fun ProfileScreen(
                     onClick = { selectedTab = 1 },
                     modifier = Modifier.weight(1f)
                 )
-                TabButton(
-                    text = "Challenges",
-                    icon = Icons.Default.TrackChanges,
-                    isSelected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
-                    modifier = Modifier.weight(1f)
-                )
             }
         }
 
@@ -212,32 +201,6 @@ fun ProfileScreen(
                         }
                     }
                 }
-                2 -> {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Active Challenges (0)", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
-                        Button(
-                            onClick = { showCreateChallenge = true },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF97316))
-                        ) {
-                            Icon(Icons.Default.EmojiEvents, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("New Challenge")
-                        }
-                    }
-                    
-                    Spacer(Modifier.height(24.dp))
-                    
-                    EmptyStateView(
-                        icon = Icons.Default.EmojiEvents,
-                        title = "No challenges yet",
-                        description = "Create a challenge to compete with friends!"
-                    )
-                }
             }
             Spacer(Modifier.height(100.dp))
         }
@@ -261,17 +224,6 @@ fun ProfileScreen(
         )
     }
 
-    if (showCreateChallenge) {
-        CreateChallengeDialog(
-            friends = friends,
-            onDismiss = { showCreateChallenge = false },
-            onCreate = { challenge ->
-                viewModel.addChallenge(challenge)
-                showCreateChallenge = false
-            }
-        )
-    }
-    
     if (showAddFriend) {
         AddFriendStyledDialog(
             onDismiss = { showAddFriend = false },
@@ -622,4 +574,3 @@ fun FriendItem(friend: Friend, onDelete: () -> Unit) {
         }
     }
 }
-

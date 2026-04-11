@@ -168,7 +168,7 @@ class FlipWiseRepository(context: Context) {
         // Save to public leaderboard reference too
         remoteDatabase.child("leaderboard").child(userId).setValue(
             mapOf(
-                "userId" to userId,
+                "id" to userId,
                 "username" to profile.username,
                 "displayName" to profile.displayName,
                 "avatar" to profile.avatar,

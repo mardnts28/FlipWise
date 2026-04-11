@@ -213,8 +213,7 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
 
         composable(Screen.Profile.route) {
             ProfileScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToChallenge = { id -> navController.navigate(Screen.ChallengeDetail.createRoute(id)) }
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

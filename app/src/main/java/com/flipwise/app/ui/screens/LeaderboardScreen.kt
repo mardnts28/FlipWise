@@ -40,27 +40,9 @@ fun LeaderboardScreen(
 ) {
     val leaderboard by viewModel.leaderboard.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
-    val challenges by viewModel.challenges.collectAsState(initial = emptyList())
-    val friends by viewModel.friends.collectAsState(initial = emptyList())
-    
-    var selectedTab by remember { mutableIntStateOf(0) }
-    var showGoalDialog by remember { mutableStateOf(false) }
 
     Scaffold(
-        containerColor = GhostWhite,
-        floatingActionButton = {
-            Column(horizontalAlignment = Alignment.End) {
-                // Goal Creation FAB (as requested: circle button at the bottom for goal creation)
-                FloatingActionButton(
-                    onClick = { showGoalDialog = true },
-                    containerColor = GrapePop,
-                    contentColor = Color.White,
-                    shape = CircleShape,
-                ) {
-                    Icon(Icons.Rounded.Flag, contentDescription = "Create Goal")
-                }
-            }
-        }
+        containerColor = GhostWhite
     ) { padding ->
         Column(
             modifier = Modifier
@@ -71,7 +53,7 @@ fun LeaderboardScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(240.dp)
+                    .height(180.dp)
                     .clip(RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 40.dp))
                     .background(
                         Brush.linearGradient(
@@ -101,15 +83,10 @@ fun LeaderboardScreen(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 2.sp
                         )
-                        IconButton(
-                            onClick = { /* Refresh logic integrated in flow */ },
-                            modifier = Modifier.background(Color.White.copy(alpha = 0.2f), CircleShape)
-                        ) {
-                            Icon(Icons.Rounded.Public, contentDescription = null, tint = Color.White)
-                        }
+                        Box(modifier = Modifier.size(40.dp))
                     }
 
-                    Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(16.dp))
 
                     Text(
                         text = "Real-time\nLeaderboard",
@@ -118,83 +95,14 @@ fun LeaderboardScreen(
                         fontWeight = FontWeight.ExtraBold,
                         lineHeight = 36.sp
                     )
-                    
-                    Spacer(Modifier.weight(1f))
-                    
-                    // Simple Tab Switcher
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
-                            .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
-                            .padding(4.dp)
-                    ) {
-                        TabItem(
-                            title = "Ranking",
-                            selected = selectedTab == 0,
-                            onClick = { selectedTab = 0 },
-                            modifier = Modifier.weight(1f)
-                        )
-                        TabItem(
-                            title = "Challenges",
-                            selected = selectedTab == 1,
-                            onClick = { selectedTab = 1 },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
                 }
             }
 
-            // Content Area
+            // Ranking List
             Box(modifier = Modifier.fillMaxSize()) {
-                AnimatedContent(
-                    targetState = selectedTab,
-                    transitionSpec = {
-                        if (targetState > initialState) {
-                            slideInHorizontally { it } + fadeIn() togetherWith slideOutHorizontally { -it } + fadeOut()
-                        } else {
-                            slideInHorizontally { -it } + fadeIn() togetherWith slideOutHorizontally { it } + fadeOut()
-                        }
-                    },
-                    label = "tabContent"
-                ) { targetTab ->
-                    when (targetTab) {
-                        0 -> RankingList(leaderboard, userProfile)
-                        1 -> ChallengesList(challenges)
-                    }
-                }
+                RankingList(leaderboard, userProfile)
             }
         }
-    }
-
-    if (showGoalDialog) {
-        CreateGoalDialog(
-            onDismiss = { showGoalDialog = false },
-            onCreate = { goal ->
-                viewModel.addChallenge(goal)
-                showGoalDialog = false
-            }
-        )
-    }
-
-}
-
-@Composable
-fun TabItem(title: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(16.dp))
-            .background(if (selected) Color.White else Color.Transparent)
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = title,
-            color = if (selected) GrapePop else Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp
-        )
     }
 }
 
@@ -209,32 +117,8 @@ fun RankingList(leaderboard: List<UserProfile>, userProfile: UserProfile) {
             LeaderboardItem(
                 rank    = index + 1,
                 profile = profile,
-                isMe    = profile.username == userProfile.username
+                isMe    = profile.id == userProfile.id
             )
-        }
-    }
-}
-
-@Composable
-fun ChallengesList(challenges: List<Challenge>) {
-    if (challenges.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("🏔️", fontSize = 64.sp)
-                Spacer(Modifier.height(16.dp))
-                Text("No active challenges", color = NavyInk60, fontWeight = FontWeight.Bold)
-                Text("Create one to compete with others!", color = NavyInk.copy(alpha = 0.4f), fontSize = 14.sp)
-            }
-        }
-    } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp, start = 20.dp, end = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            itemsIndexed(challenges) { _, challenge ->
-                ChallengeItem(challenge = challenge)
-            }
         }
     }
 }
@@ -316,50 +200,6 @@ fun LeaderboardItem(rank: Int, profile: UserProfile, isMe: Boolean) {
                     fontSize   = 20.sp
                 )
                 Text("POINTS", color = NavyInk.copy(alpha = 0.3f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}
-
-@Composable
-fun ChallengeItem(challenge: Challenge) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        color = Color.White,
-        shadowElevation = 0.dp
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier.size(44.dp).background(CoralZest.copy(alpha = 0.1f), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(if (challenge.type == "personal") "🎯" else "🏆", fontSize = 22.sp)
-                }
-                Spacer(Modifier.width(16.dp))
-                Column {
-                    Text(challenge.name, fontWeight = FontWeight.Bold, color = NavyInk, fontSize = 18.sp)
-                    Text(challenge.type.uppercase(), color = CoralZest, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = 1.sp)
-                }
-                Spacer(Modifier.weight(1f))
-                Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = NavyInk60)
-            }
-            
-            Spacer(Modifier.height(16.dp))
-            
-            LinearProgressIndicator(
-                progress = { 0.4f }, // Placeholder
-                modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
-                color = CoralZest,
-                trackColor = CoralZest.copy(alpha = 0.1f)
-            )
-            
-            Spacer(Modifier.height(8.dp))
-            
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("${challenge.goal} ${challenge.goalType}", color = NavyInk60, fontSize = 12.sp)
-                Text("active", color = MintGreen, fontWeight = FontWeight.Bold, fontSize = 12.sp)
             }
         }
     }
