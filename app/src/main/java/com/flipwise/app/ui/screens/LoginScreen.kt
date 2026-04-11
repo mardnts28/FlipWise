@@ -129,7 +129,7 @@ fun LoginScreen(
                         .padding(8.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.AutoAwesome,
+                        imageVector = Icons.Rounded.Star,
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(20.dp)
@@ -148,7 +148,7 @@ fun LoginScreen(
                         .padding(8.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.ElectricBolt,
+                        imageVector = Icons.Rounded.Star,
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(16.dp)

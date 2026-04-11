@@ -1,10 +1,9 @@
 package com.flipwise.app.ui.screens
 
-import kotlinx.coroutines.launch
-
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -13,42 +12,38 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.flipwise.app.R
 import com.flipwise.app.ui.theme.*
 import com.flipwise.app.ui.components.FlipWiseTextField
-import com.flipwise.app.viewmodel.ProfileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     onNavigateToLogin: () -> Unit,
-    onRegisterSuccess: (String) -> Unit,
-    profileViewModel: ProfileViewModel = viewModel()
+    onRegisterSuccess: (String) -> Unit
 ) {
-    var fullName by remember { mutableStateOf("") }
-    var displayUsername by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
     var showConfirmPassword by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
 
     val infiniteTransition = rememberInfiniteTransition(label = "background")
     
@@ -80,6 +75,7 @@ fun RegisterScreen(
             modifier = Modifier
                 .offset(x = 200.dp, y = (-100).dp)
                 .size(400.dp)
+                .blur(80.dp)
                 .background(GrapePop.copy(alpha = 0.2f * blob1Pos), CircleShape)
         )
         Box(
@@ -87,6 +83,7 @@ fun RegisterScreen(
                 .align(Alignment.BottomStart)
                 .offset(x = (-100).dp, y = 100.dp)
                 .size(400.dp)
+                .blur(80.dp)
                 .background(CoralZest.copy(alpha = 0.2f), CircleShape)
         )
 
@@ -102,9 +99,10 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(40.dp))
             
             Box(contentAlignment = Alignment.Center) {
-                Text(
-                    text = "🎴",
-                    fontSize = 80.sp
+                Image(
+                    painter = painterResource(id = R.drawable.app_logo),
+                    contentDescription = "FlipWise Logo",
+                    modifier = Modifier.size(140.dp)
                 )
                 
                 // Floating Sparkle Badge
@@ -133,7 +131,8 @@ fun RegisterScreen(
                         .offset(x = (-10).dp, y = 10.dp)
                         .background(
                             Brush.linearGradient(listOf(GrapePop, Color(0xFF9333EA))),
-                            CircleShape)
+                            CircleShape
+                        )
                         .padding(8.dp)
                 ) {
                     Icon(
@@ -208,7 +207,7 @@ fun RegisterScreen(
                         }
                     }
 
-                    // Full Name Field -> username in profile
+                    // Name Field
                     Column {
                         Text(
                             text = "Full Name",
@@ -218,27 +217,10 @@ fun RegisterScreen(
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
                         FlipWiseTextField(
-                            value = fullName,
-                            onValueChange = { fullName = it },
+                            value = name,
+                            onValueChange = { name = it },
                             placeholder = "John Doe",
                             leadingIcon = Icons.Rounded.Person
-                        )
-                    }
-
-                    // Display Name Field -> flipper123 in profile
-                    Column {
-                        Text(
-                            text = "Display Name (e.g. flipper123)",
-                            color = NavyInk,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        )
-                        FlipWiseTextField(
-                            value = displayUsername,
-                            onValueChange = { displayUsername = it },
-                            placeholder = "flipper123",
-                            leadingIcon = Icons.Rounded.Badge
                         )
                     }
 
@@ -300,11 +282,10 @@ fun RegisterScreen(
                         )
                     }
 
-
                     // Submit Button
                     Button(
                         onClick = {
-                            if (fullName.isBlank() || displayUsername.isBlank() || email.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
+                            if (name.isBlank() || email.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
                                 error = "Please fill in all fields"
                             } else if (!email.contains("@")) {
                                 error = "Please enter a valid email"
@@ -313,28 +294,9 @@ fun RegisterScreen(
                             } else if (password != confirmPassword) {
                                 error = "Passwords do not match"
                             } else {
-                                isLoading = true
-                                error = null
-                                scope.launch {
-                                    val result = profileViewModel.signUp(email, password)
-                                    if (result.isSuccess) {
-                                        profileViewModel.register(displayUsername, fullName)
-                                        profileViewModel.signOut() // Sign out to force login
-                                        isLoading = false
-                                        onRegisterSuccess(email)
-                                    } else {
-                                        isLoading = false
-                                        val ex = result.exceptionOrNull()
-                                        error = when (ex) {
-                                            is com.google.firebase.auth.FirebaseAuthUserCollisionException -> "This email address is already associated with an account."
-                                            is com.google.firebase.auth.FirebaseAuthWeakPasswordException -> "Password must be at least 6 characters long."
-                                            else -> "Registration failed. Please try again later."
-                                        }
-                                    }
-                                }
+                                onRegisterSuccess(email)
                             }
                         },
-                        enabled = !isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(64.dp),
@@ -366,7 +328,7 @@ fun RegisterScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                                    imageVector = Icons.Rounded.ArrowForward,
                                     contentDescription = null,
                                     tint = Color.White,
                                     modifier = Modifier.size(20.dp)

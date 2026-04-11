@@ -13,14 +13,22 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
 
 class FlipWiseRepository(context: Context) {
-    private val db         by lazy { AppDatabase.getDatabase(context) }
-    private val deckDao    by lazy { db.deckDao() }
-    private val flashcardDao by lazy { db.flashcardDao() }
-    private val profileDao by lazy { db.profileDao() }
-    private val sessionDao by lazy { db.studySessionDao() }
+    private val appDatabase by lazy { AppDatabase.getDatabase(context) }
+    private val deckDao    by lazy { appDatabase.deckDao() }
+    private val flashcardDao by lazy { appDatabase.flashcardDao() }
+    private val profileDao by lazy { appDatabase.profileDao() }
+    private val sessionDao by lazy { appDatabase.studySessionDao() }
 
     private val auth by lazy { FirebaseAuth.getInstance() }
-    private val realtimeDb by lazy { FirebaseDatabase.getInstance().reference }
+    private val remoteDatabase by lazy { 
+        // Persistence must be enabled BEFORE any other usage of the database
+        try {
+            FirebaseDatabase.getInstance().setPersistenceEnabled(true)
+        } catch (e: Exception) {
+            // Persistence might already be enabled or failed in this process
+        }
+        FirebaseDatabase.getInstance().reference 
+    }
 
     val userId: String
         get() = auth.currentUser?.uid ?: "local_user"
@@ -64,7 +72,7 @@ class FlipWiseRepository(context: Context) {
         // Clear local database to align user profiles and data correctly
         @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
         kotlinx.coroutines.GlobalScope.launch {
-            db.clearAllTables()
+            appDatabase.clearAllTables()
         }
     }
 
@@ -73,13 +81,13 @@ class FlipWiseRepository(context: Context) {
         val currentUserId = userId
         return try {
             // 1. Remove from leaderboard (Public)
-            realtimeDb.child("leaderboard").child(currentUserId).removeValue().await()
+            remoteDatabase.child("leaderboard").child(currentUserId).removeValue().await()
             
             // 2. Remove all user data (Private)
-            realtimeDb.child("users").child(currentUserId).removeValue().await()
+            remoteDatabase.child("users").child(currentUserId).removeValue().await()
             
             // 3. Clear local DB
-            db.clearAllTables()
+            appDatabase.clearAllTables()
             
             // 4. Delete Auth account
             user.delete().await()
@@ -118,17 +126,17 @@ class FlipWiseRepository(context: Context) {
     suspend fun createDeck(deck: Deck) {
         deckDao.insertDeck(deck)
         // Sync to cloud
-        realtimeDb.child("users").child(userId).child("decks").child(deck.id).setValue(deck).await()
+        remoteDatabase.child("users").child(userId).child("decks").child(deck.id).setValue(deck).await()
     }
 
     suspend fun updateDeck(deck: Deck) {
         deckDao.updateDeck(deck)
-        realtimeDb.child("users").child(userId).child("decks").child(deck.id).setValue(deck).await()
+        remoteDatabase.child("users").child(userId).child("decks").child(deck.id).setValue(deck).await()
     }
 
     suspend fun deleteDeck(deckId: String) {
         deckDao.deleteDeckById(deckId)
-        realtimeDb.child("users").child(userId).child("decks").child(deckId).removeValue().await()
+        remoteDatabase.child("users").child(userId).child("decks").child(deckId).removeValue().await()
     }
 
     // --- Cards ---
@@ -137,17 +145,17 @@ class FlipWiseRepository(context: Context) {
     suspend fun addFlashcard(card: Flashcard) {
         flashcardDao.insertCard(card)
         // Sync to cloud
-        realtimeDb.child("users").child(userId).child("cards").child(card.id).setValue(card).await()
+        remoteDatabase.child("users").child(userId).child("cards").child(card.id).setValue(card).await()
     }
 
     suspend fun updateFlashcard(card: Flashcard) {
         flashcardDao.updateCard(card)
-        realtimeDb.child("users").child(userId).child("cards").child(card.id).setValue(card).await()
+        remoteDatabase.child("users").child(userId).child("cards").child(card.id).setValue(card).await()
     }
 
     suspend fun deleteFlashcard(card: Flashcard) {
         flashcardDao.deleteCard(card)
-        realtimeDb.child("users").child(userId).child("cards").child(card.id).removeValue().await()
+        remoteDatabase.child("users").child(userId).child("cards").child(card.id).removeValue().await()
     }
 
     // --- Profile ---
@@ -156,9 +164,9 @@ class FlipWiseRepository(context: Context) {
     suspend fun updateProfile(profile: UserProfile) {
         profileDao.insertProfile(profile)
         // Sync to cloud
-        realtimeDb.child("users").child(userId).child("profile").setValue(profile).await()
+        remoteDatabase.child("users").child(userId).child("profile").setValue(profile).await()
         // Save to public leaderboard reference too
-        realtimeDb.child("leaderboard").child(userId).setValue(
+        remoteDatabase.child("leaderboard").child(userId).setValue(
             mapOf(
                 "userId" to userId,
                 "username" to profile.username,
@@ -174,7 +182,7 @@ class FlipWiseRepository(context: Context) {
     suspend fun syncProfile(): UserProfile? {
         if (!isUserLoggedIn()) return null
         return try {
-            val snapshot = realtimeDb.child("users").child(userId).child("profile").get().await()
+            val snapshot = remoteDatabase.child("users").child(userId).child("profile").get().await()
             val profile = snapshot.getValue(UserProfile::class.java)
             if (profile != null) {
                 profileDao.insertProfile(profile)
@@ -192,19 +200,19 @@ class FlipWiseRepository(context: Context) {
             val profile = syncProfile()
             
             // 2. Sync Decks
-            val decksSnapshot = realtimeDb.child("users").child(userId).child("decks").get().await()
+            val decksSnapshot = remoteDatabase.child("users").child(userId).child("decks").get().await()
             decksSnapshot.children.mapNotNull { it.getValue(Deck::class.java) }.forEach {
                 deckDao.insertDeck(it)
             }
             
             // 3. Sync Cards
-            val cardsSnapshot = realtimeDb.child("users").child(userId).child("cards").get().await()
+            val cardsSnapshot = remoteDatabase.child("users").child(userId).child("cards").get().await()
             cardsSnapshot.children.mapNotNull { it.getValue(Flashcard::class.java) }.forEach {
                 flashcardDao.insertCard(it)
             }
             
             // 4. Sync Sessions
-            val sessionsSnapshot = realtimeDb.child("users").child(userId).child("sessions").get().await()
+            val sessionsSnapshot = remoteDatabase.child("users").child(userId).child("sessions").get().await()
             sessionsSnapshot.children.mapNotNull { it.getValue(StudySession::class.java) }.forEach {
                 sessionDao.insertSession(it)
             }
@@ -223,13 +231,13 @@ class FlipWiseRepository(context: Context) {
     suspend fun saveSession(session: StudySession) {
         sessionDao.insertSession(session)
         // Sync to cloud
-        realtimeDb.child("users").child(userId).child("sessions").push().setValue(session).await()
+        remoteDatabase.child("users").child(userId).child("sessions").push().setValue(session).await()
     }
 
     // --- Leaderboard ---
     suspend fun getLeaderboard(): List<UserProfile> {
         return try {
-            val snapshot = realtimeDb.child("leaderboard")
+            val snapshot = remoteDatabase.child("leaderboard")
                 .orderByChild("totalPoints")
                 .limitToLast(100)
                 .get()
@@ -244,7 +252,7 @@ class FlipWiseRepository(context: Context) {
     }
 
     fun getLeaderboardFlow(): Flow<List<UserProfile>> = kotlinx.coroutines.flow.callbackFlow {
-        val ref = realtimeDb.child("leaderboard").orderByChild("totalPoints").limitToLast(100)
+        val ref = remoteDatabase.child("leaderboard").orderByChild("totalPoints").limitToLast(100)
         val listener = object : com.google.firebase.database.ValueEventListener {
             override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
                 val list = snapshot.children.mapNotNull { child ->
@@ -262,8 +270,8 @@ class FlipWiseRepository(context: Context) {
 
     // --- Challenges ---
     suspend fun addChallenge(challenge: Challenge) {
-        db.challengeDao().insertChallenge(challenge)
-        realtimeDb.child("users").child(userId).child("challenges").child(challenge.id).setValue(challenge).await()
+        appDatabase.challengeDao().insertChallenge(challenge)
+        remoteDatabase.child("users").child(userId).child("challenges").child(challenge.id).setValue(challenge).await()
     }
 
     suspend fun joinChallenge(challengeId: String, userProfile: UserProfile) {
@@ -275,21 +283,21 @@ class FlipWiseRepository(context: Context) {
             "score" to 0,
             "team" to if ((0..1).random() == 0) "Blue" else "Red" // For team challenges
         )
-        realtimeDb.child("challenges").child(challengeId).child("participants").child(userId).setValue(participant).await()
+        remoteDatabase.child("challenges").child(challengeId).child("participants").child(userId).setValue(participant).await()
     }
 
     suspend fun updateChallengeScore(challengeId: String, scoreDelta: Int) {
-        val ref = realtimeDb.child("challenges").child(challengeId).child("participants").child(userId).child("score")
+        val ref = remoteDatabase.child("challenges").child(challengeId).child("participants").child(userId).child("score")
         val current = ref.get().await().getValue(Int::class.java) ?: 0
         ref.setValue(current + scoreDelta).await()
     }
 
-    fun getActiveChallenges(): Flow<List<Challenge>> = db.challengeDao().getAllChallenges()
+    fun getActiveChallenges(): Flow<List<Challenge>> = appDatabase.challengeDao().getAllChallenges()
 
     // --- Friends Social System ---
     suspend fun findUserByUsername(username: String): UserProfile? {
         return try {
-            val snapshot = realtimeDb.child("leaderboard")
+            val snapshot = remoteDatabase.child("leaderboard")
                 .orderByChild("username")
                 .equalTo(username.trim())
                 .limitToFirst(1)
@@ -316,14 +324,14 @@ class FlipWiseRepository(context: Context) {
             currentStreak = 0, // Simplified for now
             totalCardsStudied = 0
         )
-        realtimeDb.child("users").child(userId).child("friends").child(targetId).setValue(friendEntry).await()
+        remoteDatabase.child("users").child(userId).child("friends").child(targetId).setValue(friendEntry).await()
         
         // 2. Add to my local DB
-        db.friendDao().insertFriend(friendEntry)
+        appDatabase.friendDao().insertFriend(friendEntry)
     }
 
     fun getFriendsFlow(): Flow<List<Friend>> = callbackFlow {
-        val ref = realtimeDb.child("users").child(userId).child("friends")
+        val ref = remoteDatabase.child("users").child(userId).child("friends")
         val listener = object : com.google.firebase.database.ValueEventListener {
             override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
                 val friends = snapshot.children.mapNotNull { it.getValue(Friend::class.java) }
@@ -332,7 +340,7 @@ class FlipWiseRepository(context: Context) {
                 // Keep local DB in sync
                 @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
                 kotlinx.coroutines.GlobalScope.launch {
-                    friends.forEach { db.friendDao().insertFriend(it) }
+                    friends.forEach { appDatabase.friendDao().insertFriend(it) }
                 }
             }
             override fun onCancelled(error: com.google.firebase.database.DatabaseError) {

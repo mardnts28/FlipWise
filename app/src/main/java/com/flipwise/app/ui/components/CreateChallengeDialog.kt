@@ -77,6 +77,23 @@ fun CreateChallengeDialog(
 
                 Spacer(Modifier.height(20.dp))
 
+                Text("Description", fontWeight = FontWeight.Bold, color = NavyInk, fontSize = 14.sp)
+                Spacer(Modifier.height(8.dp))
+                TextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    placeholder = { Text("What is this challenge about?", color = Color.LightGray) },
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFF9F9FB),
+                        unfocusedContainerColor = Color(0xFFF9F9FB),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    )
+                )
+
+                Spacer(Modifier.height(20.dp))
+
                 Text("Mode", fontWeight = FontWeight.Bold, color = NavyInk, fontSize = 14.sp)
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

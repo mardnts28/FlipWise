@@ -229,9 +229,11 @@ fun StudyModeScreen(
                                     if (selectedChoice == currentCard.back) {
                                         easyCount++
                                         totalPoints += 10
+                                        viewModel.updateCardSrs(currentCard, "easy")
                                     } else {
                                         forgotCount++
                                         totalPoints += 1
+                                        viewModel.updateCardSrs(currentCard, "forgot")
                                     }
                                     
                                     if (currentIndex + 1 < studyCards!!.size) {
@@ -273,6 +275,7 @@ fun StudyModeScreen(
                                 StudyRatingButton("😟", "Forgot", Color(0xFFF43F5E), Modifier.weight(1f)) {
                                     forgotCount++
                                     totalPoints += 1
+                                    viewModel.updateCardSrs(currentCard, "forgot")
                                     if (currentIndex + 1 < studyCards!!.size) {
                                         currentIndex++
                                         isFlipped = false
@@ -283,6 +286,7 @@ fun StudyModeScreen(
                                 StudyRatingButton("🧐", "Hard", Color(0xFFF97316), Modifier.weight(1f)) {
                                     hardCount++
                                     totalPoints += 5
+                                    viewModel.updateCardSrs(currentCard, "hard")
                                     if (currentIndex + 1 < studyCards!!.size) {
                                         currentIndex++
                                         isFlipped = false
@@ -293,6 +297,7 @@ fun StudyModeScreen(
                                 StudyRatingButton("😊", "Easy", Color(0xFF10B981), Modifier.weight(1f)) {
                                     easyCount++
                                     totalPoints += 10
+                                    viewModel.updateCardSrs(currentCard, "easy")
                                     if (currentIndex + 1 < studyCards!!.size) {
                                         currentIndex++
                                         isFlipped = false

@@ -256,7 +256,6 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
                     masteredCount = newMastered
                 ))
             }
-            // checkAchievements(cardsStudied) // Removed, called below with local state
             
             // Update active challenge scores
             repository.getActiveChallenges().first().forEach { challenge ->
@@ -270,6 +269,36 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
                 totalCardsStudied = _userProgress.value.totalCardsStudied + cardsStudied
             )
             checkAchievements(updatedProgress)
+        }
+    }
+
+    /**
+     * Updates the SRS (Spaced Repetition System) stats for a specific card based on user rating.
+     * rating: "easy", "hard", "forgot"
+     */
+    fun updateCardSrs(card: Flashcard, rating: String) {
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            
+            // Simple SRS algorithm (SM-2 variant basics)
+            val interval = when (rating) {
+                "forgot" -> 10 * 60 * 1000L // 10 minutes
+                "hard" -> 1 * 24 * 60 * 60 * 1000L // 1 day
+                "easy" -> 4 * 24 * 60 * 60 * 1000L // 4 days
+                else -> 1 * 24 * 60 * 60 * 1000L
+            }
+            
+            // Multiplier based on previous reviews
+            val multiplier = if (card.reviews > 0) (card.reviews + 1).coerceAtMost(10) else 1
+            val nextReview = now + (interval * multiplier)
+            
+            repository.updateFlashcard(
+                card.copy(
+                    nextReview = nextReview,
+                    reviews = card.reviews + 1,
+                    difficulty = rating
+                )
+            )
         }
     }
 

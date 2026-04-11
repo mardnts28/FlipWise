@@ -1,6 +1,7 @@
 package com.flipwise.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -24,6 +25,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flipwise.app.ui.theme.*
 import com.flipwise.app.viewmodel.DeckViewModel
+import com.flipwise.app.viewmodel.ProfileViewModel
+import kotlinx.coroutines.launch
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -114,7 +118,14 @@ fun SettingsScreen(
                 trailingContent = {
                     Switch(
                         checked = notificationsOn,
-                        onCheckedChange = { notificationsOn = it },
+                        onCheckedChange = { 
+                            notificationsOn = it 
+                            if (it) {
+                                com.flipwise.app.data.worker.StudyReminderWorker.schedule(androidx.compose.ui.platform.LocalContext.current)
+                            } else {
+                                com.flipwise.app.data.worker.StudyReminderWorker.cancel(androidx.compose.ui.platform.LocalContext.current)
+                            }
+                        },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
                             checkedTrackColor = MintGreen,

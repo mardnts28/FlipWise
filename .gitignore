@@ -13,3 +13,11 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Logs and temporary files
+*.log
+hs_err_pid*
+replay_pid*
+*.txt
+build_output*
+!google-services.json # If it was accidentally ignored, we might want to keep it if it's essential
