@@ -86,7 +86,6 @@ dependencies {
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    implementation(libs.google.firebase.database)
     kapt(libs.androidx.room.compiler)
 
     implementation("com.google.code.gson:gson:2.10.1")

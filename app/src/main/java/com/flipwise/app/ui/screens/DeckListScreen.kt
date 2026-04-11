@@ -91,7 +91,7 @@ fun DeckListScreen(
     if (showCreateDialog) {
         CreateDeckDialog(
             onDismiss = { showCreateDialog = false },
-            onDeckCreate = { name, subject, color, icon ->
+            onCreate = { name, subject, color, icon ->
                 viewModel.createDeck(name, subject, color, icon)
                 showCreateDialog = false
             }

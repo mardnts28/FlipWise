@@ -21,13 +21,14 @@ class FlipWiseRepository(context: Context) {
 
     private val auth by lazy { FirebaseAuth.getInstance() }
     private val remoteDatabase by lazy { 
+        val url = "https://flipwise-dc052-default-rtdb.asia-southeast1.firebasedatabase.app"
         // Persistence must be enabled BEFORE any other usage of the database
         try {
-            FirebaseDatabase.getInstance().setPersistenceEnabled(true)
+            FirebaseDatabase.getInstance(url).setPersistenceEnabled(true)
         } catch (e: Exception) {
             // Persistence might already be enabled or failed in this process
         }
-        FirebaseDatabase.getInstance().reference 
+        FirebaseDatabase.getInstance(url).reference 
     }
 
     val userId: String
