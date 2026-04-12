@@ -38,6 +38,7 @@ fun HomeScreen(
     val decks by viewModel.decks.collectAsState(initial = emptyList())
     val progress by viewModel.userProgress.collectAsState()
     val friends by profileViewModel.friends.collectAsState(initial = emptyList())
+    val profile by profileViewModel.userProfile.collectAsState()
     val dimensions = FlipWiseDesign.dimensions
     
     var showCreateDialog by remember { mutableStateOf(false) }
