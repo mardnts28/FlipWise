@@ -120,4 +120,7 @@ dependencies {
 
     // WorkManager for background notifications
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // Google Play Integrity API for client attestation
+    implementation("com.google.android.play:integrity:1.3.0")
 }

@@ -80,7 +80,8 @@ data class UserProfile(
     val level: Int = 1,
     val xp: Int = 0,
     val totalPoints: Int = 0,
-    val badges: String = ""
+    val badges: String = "",
+    val role: String = "standard"
 ) : Parcelable
 
 @Parcelize

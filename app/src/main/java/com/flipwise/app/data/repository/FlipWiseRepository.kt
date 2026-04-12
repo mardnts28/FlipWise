@@ -21,6 +21,7 @@ class FlipWiseRepository(context: Context) {
     private val sessionDao by lazy { appDatabase.studySessionDao() }
 
     private val auth by lazy { FirebaseAuth.getInstance() }
+    private val integrityManager by lazy { com.flipwise.app.data.security.IntegrityManager(context) }
     private val remoteDatabase by lazy { 
         val url = "https://flipwise-dc052-default-rtdb.asia-southeast1.firebasedatabase.app"
         // Persistence must be enabled BEFORE any other usage of the database
@@ -36,6 +37,15 @@ class FlipWiseRepository(context: Context) {
         get() = auth.currentUser?.uid ?: "local_user"
 
     fun isUserLoggedIn(): Boolean = auth.currentUser != null
+
+    suspend fun isAdmin(): Boolean {
+        val profile = userProfile.firstOrNull() ?: syncProfile()
+        return profile?.role == "admin"
+    }
+
+    suspend fun getIntegrityToken(nonce: String): String? {
+        return integrityManager.fetchIntegrityToken(nonce)
+    }
 
     // --- Authentication ---
     suspend fun signUp(email: String, password: String): Result<Unit> {
@@ -167,7 +177,7 @@ class FlipWiseRepository(context: Context) {
         profileDao.insertProfile(profile)
         // Sync to cloud
         remoteDatabase.child("users").child(userId).child("profile").setValue(profile).await()
-        // Save to public leaderboard reference too
+        // Save to public leaderboard reference (Direct write restored)
         remoteDatabase.child("leaderboard").child(userId).setValue(
             mapOf(
                 "id" to userId,
