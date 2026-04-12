@@ -237,7 +237,7 @@ fun HomeScreen(
     if (showCreateDialog) {
         com.flipwise.app.ui.components.CreateDeckDialog(
             onDismiss = { showCreateDialog = false },
-            onDeckCreate = { name: String, subject: String, color: String, icon: String ->
+            onCreate = { name: String, subject: String, color: String, icon: String ->
                 viewModel.createDeck(name, subject, color, icon)
                 showCreateDialog = false
             }
