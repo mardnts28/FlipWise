@@ -51,7 +51,8 @@ data class Achievement(
     val icon: String,
     val category: String = "All",
     val unlockedAt: Long? = null,
-    val isUnlocked: Boolean = false
+    val isUnlocked: Boolean = false,
+    val tier: String = "bronze" // "bronze", "silver", "gold"
 )
 
 data class UserProgress(

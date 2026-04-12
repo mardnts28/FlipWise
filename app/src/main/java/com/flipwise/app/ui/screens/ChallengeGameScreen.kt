@@ -56,10 +56,16 @@ fun ChallengeGameScreen(
 
     val scope = rememberCoroutineScope()
 
-    // Initialize Game
+    // Initialize Game and Sync Time
     LaunchedEffect(allCards) {
         if (gameCards == null && allCards.isNotEmpty()) {
             gameCards = allCards.shuffled()
+        }
+    }
+
+    LaunchedEffect(challenge) {
+        challenge?.let {
+            timeLeft = it.timeLimit
         }
     }
 

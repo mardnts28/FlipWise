@@ -35,6 +35,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flipwise.app.data.model.Flashcard
 import com.flipwise.app.ui.theme.*
 import com.flipwise.app.viewmodel.DeckViewModel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 @Composable
 fun StudyModeScreen(
@@ -56,6 +58,7 @@ fun StudyModeScreen(
     var hardCount by remember { mutableIntStateOf(0) }
     var forgotCount by remember { mutableIntStateOf(0) }
     var totalPoints by remember { mutableIntStateOf(0) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(dbCards) {
         if (studyCards == null && dbCards.isNotEmpty()) {
@@ -175,89 +178,119 @@ fun StudyModeScreen(
 
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-                color = Color.White
+                shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
+                color = Color.White,
+                shadowElevation = 16.dp
             ) {
                 val options = currentCard.options?.split("|")
                 if (!options.isNullOrEmpty()) {
                     // Multiple Choice Mode
                     var selectedChoice by remember(currentCard.id) { mutableStateOf<String?>(null) }
+                    val scope = rememberCoroutineScope()
                     
                     Column(
-                        modifier = Modifier.padding(24.dp),
+                        modifier = Modifier.padding(32.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            if (selectedChoice == null) "Select the correct answer" 
-                            else if (selectedChoice == currentCard.back) "🎉 Correct!" 
-                            else "❌ Incorrect. The answer is: ${currentCard.back}",
-                            color = if (selectedChoice == null) Color.Gray 
+                            text = if (selectedChoice == null) "Choose the correct option" 
+                                   else if (selectedChoice == currentCard.back) "✨ BRILLIANT! CORRECT ✨" 
+                                   else "❌ NOT QUITE. THE ANSWER IS:",
+                            color = if (selectedChoice == null) NavyInk.copy(alpha = 0.5f) 
                                     else if (selectedChoice == currentCard.back) Color(0xFF10B981) 
                                     else Color(0xFFF43F5E),
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 1.sp,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth()
                         )
                         
-                        Spacer(Modifier.height(16.dp))
+                        if (selectedChoice != null && selectedChoice != currentCard.back) {
+                             Text(
+                                text = currentCard.back,
+                                color = NavyInk,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                        
+                        Spacer(Modifier.height(24.dp))
                         
                         options.forEach { option ->
                             val isCorrect = option == currentCard.back
                             val isSelected = selectedChoice == option
                             
-                            Button(
-                                onClick = { if (selectedChoice == null) selectedChoice = option },
+                            Surface(
+                                onClick = { 
+                                    if (selectedChoice == null) {
+                                        selectedChoice = option
+                                        // Auto-advance logic
+                                        scope.launch {
+                                            delay(1500)
+                                            if (option == currentCard.back) {
+                                                easyCount++
+                                                totalPoints += 10
+                                                viewModel.updateCardSrs(currentCard, "easy")
+                                            } else {
+                                                forgotCount++
+                                                totalPoints += 1
+                                                viewModel.updateCardSrs(currentCard, "forgot")
+                                            }
+                                            
+                                            if (currentIndex + 1 < studyCards!!.size) {
+                                                currentIndex++
+                                                isFlipped = false
+                                                selectedChoice = null
+                                            } else {
+                                                isFinished = true
+                                            }
+                                        }
+                                    }
+                                },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                                    .height(56.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = when {
-                                        selectedChoice == null -> Color(0xFFF3F4F6)
+                                    .padding(vertical = 6.dp)
+                                    .height(64.dp),
+                                shape = RoundedCornerShape(20.dp),
+                                color = when {
+                                    selectedChoice == null -> Color(0xFFF8FAFC)
+                                    isSelected && isCorrect -> Color(0xFFD1FAE5)
+                                    isSelected && !isCorrect -> Color(0xFFFEE2E2)
+                                    selectedChoice != null && isCorrect -> Color(0xFFD1FAE5).copy(alpha = 0.6f)
+                                    else -> Color(0xFFF8FAFC).copy(alpha = 0.5f)
+                                },
+                                border = BorderStroke(
+                                    width = if (isSelected || (selectedChoice != null && isCorrect)) 2.dp else 1.dp,
+                                    color = when {
+                                        selectedChoice == null -> Color(0xFFE2E8F0)
                                         isSelected && isCorrect -> Color(0xFF10B981)
                                         isSelected && !isCorrect -> Color(0xFFF43F5E)
                                         selectedChoice != null && isCorrect -> Color(0xFF10B981).copy(alpha = 0.6f)
-                                        else -> Color(0xFFF3F4F6)
-                                    },
-                                    contentColor = if (selectedChoice != null && (isSelected || isCorrect)) Color.White else Color(0xFF1E1B4B)
-                                ),
-                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                                        else -> Color(0xFFE2E8F0)
+                                    }
+                                )
                             ) {
-                                Text(option, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                                Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.padding(horizontal = 24.dp)) {
+                                    Text(
+                                        text = option,
+                                        fontSize = 17.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (selectedChoice != null && (isSelected || isCorrect)) NavyInk else NavyInk.copy(alpha = 0.8f)
+                                    )
+                                }
                             }
                         }
                         
-                        if (selectedChoice != null) {
-                            Spacer(Modifier.height(16.dp))
-                            Button(
-                                onClick = {
-                                    if (selectedChoice == currentCard.back) {
-                                        easyCount++
-                                        totalPoints += 10
-                                        viewModel.updateCardSrs(currentCard, "easy")
-                                    } else {
-                                        forgotCount++
-                                        totalPoints += 1
-                                        viewModel.updateCardSrs(currentCard, "forgot")
-                                    }
-                                    
-                                    if (currentIndex + 1 < studyCards!!.size) {
-                                        currentIndex++
-                                        isFlipped = false
-                                        selectedChoice = null
-                                    } else {
-                                        isFinished = true
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth().height(56.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
-                            ) {
-                                Text("Next Card", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            text = if (selectedChoice != null) "Next card in a moment..." else "Take your time",
+                            color = NavyInk.copy(alpha = 0.3f),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 } else {
                     // Standard Flip Mode
@@ -381,10 +414,10 @@ fun StudySummaryContent(
         }
         
         Spacer(Modifier.height(24.dp))
-        Text("Great Job!", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White)
-        Text("You completed the study session", fontSize = 16.sp, color = Color.White.copy(alpha = 0.8f))
+        Text("CONGRATULATIONS!", fontSize = 32.sp, fontWeight = FontWeight.Black, color = Color.White, letterSpacing = 1.sp)
+        Text("You've mastered this session! 🎊", fontSize = 18.sp, color = Color.White.copy(alpha = 0.9f), fontWeight = FontWeight.Medium)
         
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(40.dp))
 
         // Cards Studied Card
         Surface(

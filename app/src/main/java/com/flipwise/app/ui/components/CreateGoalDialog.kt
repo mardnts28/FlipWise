@@ -2,6 +2,8 @@ package com.flipwise.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Flag
@@ -21,11 +23,17 @@ import com.flipwise.app.ui.theme.NavyInk
 import java.util.*
 
 @Composable
-fun CreateGoalDialog(onDismiss: () -> Unit, onCreate: (Challenge) -> Unit) {
+fun CreateGoalDialog(
+    decks: List<com.flipwise.app.data.model.Deck> = emptyList(),
+    onDismiss: () -> Unit, 
+    onCreate: (Challenge) -> Unit
+) {
     var title by remember { mutableStateOf("") }
     var target by remember { mutableStateOf("100") }
     var type by remember { mutableStateOf("Cards Studied") }
     var duration by remember { mutableStateOf("7") }
+    var selectedDeckId by remember { mutableStateOf<String?>(null) }
+    var expandedDecks by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -33,7 +41,7 @@ fun CreateGoalDialog(onDismiss: () -> Unit, onCreate: (Challenge) -> Unit) {
             shape = RoundedCornerShape(28.dp),
             color = Color.White
         ) {
-            Column(modifier = Modifier.padding(24.dp)) {
+            Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier.size(48.dp).background(GrapePop.copy(alpha = 0.1f), RoundedCornerShape(12.dp)),
@@ -57,11 +65,37 @@ fun CreateGoalDialog(onDismiss: () -> Unit, onCreate: (Challenge) -> Unit) {
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color(0xFFF9F9FB),
                         unfocusedContainerColor = Color(0xFFF9F9FB),
-                        disabledContainerColor = Color(0xFFF9F9FB),
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
                     )
                 )
+
+                Spacer(Modifier.height(20.dp))
+
+                Text("Select Deck (Optional)", fontWeight = FontWeight.Bold, color = NavyInk, fontSize = 14.sp)
+                Spacer(Modifier.height(8.dp))
+                Box {
+                    OutlinedButton(
+                        onClick = { expandedDecks = true },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        val selectedDeck = decks.find { it.id == selectedDeckId }
+                        Text(selectedDeck?.name ?: "All Decks", color = NavyInk)
+                    }
+                    DropdownMenu(expanded = expandedDecks, onDismissRequest = { expandedDecks = false }) {
+                        DropdownMenuItem(
+                            text = { Text("All Decks") },
+                            onClick = { selectedDeckId = null; expandedDecks = false }
+                        )
+                        decks.forEach { deck ->
+                            DropdownMenuItem(
+                                text = { Text(deck.name) },
+                                onClick = { selectedDeckId = deck.id; expandedDecks = false }
+                            )
+                        }
+                    }
+                }
 
                 Spacer(Modifier.height(20.dp))
 
@@ -96,12 +130,11 @@ fun CreateGoalDialog(onDismiss: () -> Unit, onCreate: (Challenge) -> Unit) {
                         Spacer(Modifier.height(8.dp))
                         TextField(
                             value = target,
-                            onValueChange = { target = it },
+                            onValueChange = { if(it.all { c -> c.isDigit() }) target = it },
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)),
                             colors = TextFieldDefaults.colors(
                                 focusedContainerColor = Color(0xFFF9F9FB),
                                 unfocusedContainerColor = Color(0xFFF9F9FB),
-                                disabledContainerColor = Color(0xFFF9F9FB),
                                 focusedIndicatorColor = Color.Transparent,
                                 unfocusedIndicatorColor = Color.Transparent
                             )
@@ -115,12 +148,11 @@ fun CreateGoalDialog(onDismiss: () -> Unit, onCreate: (Challenge) -> Unit) {
                 Spacer(Modifier.height(8.dp))
                 TextField(
                     value = duration,
-                    onValueChange = { duration = it },
+                    onValueChange = { if(it.all { c -> c.isDigit() }) duration = it },
                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color(0xFFF9F9FB),
                         unfocusedContainerColor = Color(0xFFF9F9FB),
-                        disabledContainerColor = Color(0xFFF9F9FB),
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
                     )
@@ -132,7 +164,7 @@ fun CreateGoalDialog(onDismiss: () -> Unit, onCreate: (Challenge) -> Unit) {
                     onClick = {
                         onCreate(Challenge(
                             id = UUID.randomUUID().toString(),
-                            name = title,
+                            name = title.ifBlank { "Study Goal" },
                             description = "Personal Achievement",
                             type = "personal",
                             goal = target.toIntOrNull() ?: 100,
@@ -141,12 +173,13 @@ fun CreateGoalDialog(onDismiss: () -> Unit, onCreate: (Challenge) -> Unit) {
                             endDate = System.currentTimeMillis() + (duration.toLongOrNull() ?: 7) * 86400000,
                             status = "active",
                             createdBy = "local_user",
-                            participants = "local_user"
+                            participants = "local_user",
+                            deckIds = selectedDeckId ?: ""
                         ))
                     },
                     modifier = Modifier.fillMaxWidth().height(60.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)) // Fixed GrapePop color
+                    colors = ButtonDefaults.buttonColors(containerColor = GrapePop)
                 ) {
                     Text("Start Journey", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 }

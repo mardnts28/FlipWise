@@ -30,13 +30,22 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     val isUserLoggedIn: Boolean 
         get() = repository.isUserLoggedIn()
 
+    fun isGoogleUser(): Boolean = repository.isGoogleUser()
+
     suspend fun updateProfile(displayName: String, username: String, bio: String, avatar: String): Result<Unit> {
         return try {
+            val trimmedUsername = username.trim()
+            if (trimmedUsername != userProfile.value.username) {
+                if (repository.isUsernameTaken(trimmedUsername)) {
+                    return Result.failure(Exception("Username already taken"))
+                }
+            }
+
             val current = userProfile.value
             val profileToSave = current.copy(
                 id = repository.userId,
                 displayName = displayName, 
-                username = username, 
+                username = trimmedUsername, 
                 bio = bio, 
                 avatar = avatar
             )
@@ -45,6 +54,10 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    suspend fun isUsernameTaken(username: String): Boolean {
+        return repository.isUsernameTaken(username)
     }
 
     suspend fun syncProfile(): UserProfile? {

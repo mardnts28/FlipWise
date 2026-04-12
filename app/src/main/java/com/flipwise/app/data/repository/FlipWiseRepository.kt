@@ -38,6 +38,10 @@ class FlipWiseRepository(context: Context) {
 
     fun isUserLoggedIn(): Boolean = auth.currentUser != null
 
+    fun isGoogleUser(): Boolean {
+        return auth.currentUser?.providerData?.any { it.providerId == "google.com" } ?: false
+    }
+
     suspend fun isAdmin(): Boolean {
         val profile = userProfile.firstOrNull() ?: syncProfile()
         return profile?.role == "admin"
@@ -307,6 +311,20 @@ class FlipWiseRepository(context: Context) {
     fun getActiveChallenges(): Flow<List<Challenge>> = appDatabase.challengeDao().getAllChallenges()
 
     // --- Friends Social System ---
+    suspend fun isUsernameTaken(username: String): Boolean {
+        return try {
+            val snapshot = remoteDatabase.child("leaderboard")
+                .orderByChild("username")
+                .equalTo(username.trim())
+                .limitToFirst(1)
+                .get()
+                .await()
+            snapshot.hasChildren()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     suspend fun findUserByUsername(username: String): UserProfile? {
         return try {
             val snapshot = remoteDatabase.child("leaderboard")

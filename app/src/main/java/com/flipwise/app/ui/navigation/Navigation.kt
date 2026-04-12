@@ -53,7 +53,8 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                 scope.launch {
                     if (profileViewModel.isUserLoggedIn) {
                         val profile = profileViewModel.syncProfile()
-                        if (profile == null || profile.username == "flipper" || profile.username.isBlank()) {
+                        val isGoogleUser = profileViewModel.isGoogleUser()
+                        if (isGoogleUser && (profile == null || profile.username == "flipper" || profile.username.isBlank())) {
                             navController.navigate(Screen.CompleteProfile.route) {
                                 popUpTo(Screen.Splash.route) { inclusive = true }
                             }
@@ -80,8 +81,10 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                 onLoginSuccess = {
                     scope.launch {
                         val profile = profileViewModel.fullSync()
+                        val isGoogleUser = profileViewModel.isGoogleUser()
                         // Check if username (nickname) is set to default "flipper" or blank
-                        if (profile == null || profile.username == "flipper" || profile.username.isBlank()) {
+                        // AND only redirect if it's a Gmail (Google) user
+                        if (isGoogleUser && (profile == null || profile.username == "flipper" || profile.username.isBlank())) {
                             navController.navigate(Screen.CompleteProfile.route) {
                                 popUpTo(Screen.Login.route) { inclusive = true }
                             }

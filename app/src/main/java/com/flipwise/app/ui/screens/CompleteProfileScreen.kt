@@ -133,22 +133,29 @@ fun CompleteProfileScreen(
                             if (nickname.isBlank()) {
                                 error = "Please enter a nickname"
                             } else {
-                                isLoading = true
-                                scope.launch {
-                                    val profile = profileViewModel.userProfile.value
-                                    val result = profileViewModel.updateProfile(
-                                        displayName = profile.displayName,
-                                        username = nickname,
-                                        bio = profile.bio,
-                                        avatar = profile.avatar
-                                    )
-                                    isLoading = false
-                                    if (result.isSuccess) {
-                                        onComplete()
-                                    } else {
-                                        error = "Failed to save profile: ${result.exceptionOrNull()?.message}"
+                                    isLoading = true
+                                    error = null
+                                    scope.launch {
+                                        if (profileViewModel.isUsernameTaken(nickname.trim())) {
+                                            error = "Username is already taken. Please pick another one."
+                                            isLoading = false
+                                            return@launch
+                                        }
+
+                                        val profile = profileViewModel.userProfile.value
+                                        val result = profileViewModel.updateProfile(
+                                            displayName = profile.displayName,
+                                            username = nickname,
+                                            bio = profile.bio,
+                                            avatar = profile.avatar
+                                        )
+                                        isLoading = false
+                                        if (result.isSuccess) {
+                                            onComplete()
+                                        } else {
+                                            error = "Failed to save profile: ${result.exceptionOrNull()?.message}"
+                                        }
                                     }
-                                }
                             }
                         },
                         enabled = !isLoading,

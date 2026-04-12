@@ -327,13 +327,24 @@ fun RegisterScreen(
                                 isLoading = true
                                 error = null
                                 scope.launch {
+                                    if (profileViewModel.isUsernameTaken(nickname.trim())) {
+                                        error = "Username is already taken. Please pick another one."
+                                        isLoading = false
+                                        return@launch
+                                    }
+
                                     val result = profileViewModel.signUp(email.trim(), password.trim())
                                     if (result.isSuccess) {
                                         // Initialize profile
                                         profileViewModel.register(nickname.trim(), name.trim())
                                         onRegisterSuccess(email)
                                     } else {
-                                        error = result.exceptionOrNull()?.message ?: "Registration failed"
+                                        val e = result.exceptionOrNull()
+                                        error = when (e) {
+                                            is com.google.firebase.auth.FirebaseAuthUserCollisionException ->
+                                                "This email is already associated with an account."
+                                            else -> e?.message ?: "Registration failed"
+                                        }
                                     }
                                     isLoading = false
                                 }

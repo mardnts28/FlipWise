@@ -37,6 +37,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import com.flipwise.app.data.ai.AiInsight
 import androidx.compose.animation.*
+import com.flipwise.app.ui.theme.*
 
 @Composable
 fun StudyTrackerScreen(
@@ -118,17 +119,56 @@ fun StudyTrackerScreen(
                 }
             }
 
-            // --- Activity Section ---
+            // --- Level Progression ---
             Surface(
                 shape = RoundedCornerShape(24.dp),
                 color = Color.White,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text("Activity", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF1E1B4B))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Learning Level", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = NavyInk)
+                            Text("Level ${progress.totalPoints / 1000 + 1}", color = Color.Gray, fontSize = 14.sp)
+                        }
+                        Surface(
+                            color = GrapePop.copy(alpha = 0.1f),
+                            shape = CircleShape
+                        ) {
+                            Text(
+                                "XP: ${progress.totalPoints % 1000}/1000",
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                color = GrapePop,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    LinearProgressIndicator(
+                        progress = { (progress.totalPoints % 1000) / 1000f },
+                        modifier = Modifier.fillMaxWidth().height(12.dp).clip(CircleShape),
+                        color = Color(0xFF10B981),
+                        trackColor = Color(0xFFF0F0F5)
+                    )
+                }
+            }
+
+            // --- Activity Section (Monthly Calendar) ---
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = Color.White,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text("Study Activity", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = NavyInk)
                     Spacer(Modifier.height(16.dp))
                     
-                    ActivityHeatmap(
+                    MonthlyActivityCalendar(
                         sessions = sessions,
                         achievements = unlockedAchievements,
                         onDayClick = { date, dayAchievements -> 
@@ -137,28 +177,6 @@ fun StudyTrackerScreen(
                             showAchievementDialog = true
                         }
                     )
-                    
-                    Spacer(Modifier.height(16.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Less", fontSize = 12.sp, color = Color.Gray)
-                            Spacer(Modifier.width(4.dp))
-                            Box(Modifier.size(12.dp).background(Color(0xFFF0E6FF), CircleShape))
-                            Spacer(Modifier.width(4.dp))
-                            Box(Modifier.size(12.dp).background(Color(0xFF7C3AED), CircleShape))
-                            Spacer(Modifier.width(4.dp))
-                            Text("More", fontSize = 12.sp, color = Color.Gray)
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(8.dp).background(Color(0xFFFBBF24), CircleShape))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Achievement", fontSize = 12.sp, color = Color.Gray)
-                        }
-                    }
                 }
             }
 
@@ -305,7 +323,8 @@ fun AchievementsUnlockedDialog(
                                 title = achievement.title,
                                 description = achievement.description,
                                 time = achievement.unlockedAt?.let { SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(it)) } ?: "--:--",
-                                icon = achievement.icon
+                                icon = achievement.icon,
+                                tier = achievement.tier
                             )
                         }
                     }
@@ -349,11 +368,17 @@ fun AchievementsUnlockedDialog(
 }
 
 @Composable
-fun AchievementUnlockedItem(title: String, description: String, time: String, icon: String) {
+fun AchievementUnlockedItem(title: String, description: String, time: String, icon: String, tier: String = "bronze") {
+    val tierColor = when (tier.lowercase()) {
+        "gold" -> Color(0xFFFBBF24)
+        "silver" -> Color(0xFF94A3B8)
+        else -> Color(0xFFB45309)
+    }
+    
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, Color(0xFFF1F1F4)),
+        border = BorderStroke(1.dp, tierColor.copy(alpha = 0.2f)),
         color = Color.White
     ) {
         Row(
@@ -363,7 +388,7 @@ fun AchievementUnlockedItem(title: String, description: String, time: String, ic
             Surface(
                 modifier = Modifier.size(60.dp),
                 shape = CircleShape,
-                color = Color(0xFF7C3AED)
+                color = tierColor.copy(alpha = 0.1f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(icon, fontSize = 28.sp)
@@ -371,112 +396,124 @@ fun AchievementUnlockedItem(title: String, description: String, time: String, ic
             }
             Spacer(Modifier.width(16.dp))
             Column {
-                Text(title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+                Text(title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = tierColor)
                 Text(description, fontSize = 12.sp, color = Color.Gray)
                 Spacer(Modifier.height(4.dp))
-                Text(time, fontSize = 12.sp, color = Color(0xFF10B981), fontWeight = FontWeight.Medium)
+                Text("Unlocked at $time", fontSize = 11.sp, color = Color.Gray.copy(alpha = 0.6f), fontWeight = FontWeight.Medium)
             }
         }
     }
 }
 
 @Composable
-fun ActivityHeatmap(
+fun MonthlyActivityCalendar(
     sessions: List<com.flipwise.app.data.model.StudySession>,
     achievements: List<com.flipwise.app.data.model.Achievement>,
     onDayClick: (Long, List<com.flipwise.app.data.model.Achievement>) -> Unit
 ) {
-    val days = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-    
-    // Group everything by day (ignoring time)
     val calendar = Calendar.getInstance()
+    val currentMonth = calendar.get(Calendar.MONTH)
+    val currentYear = calendar.get(Calendar.YEAR)
+    
+    // Header
+    val monthName = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(calendar.time)
     
     fun getDayKey(timestamp: Long): String {
-        calendar.timeInMillis = timestamp
-        return "${calendar.get(Calendar.YEAR)}-${calendar.get(Calendar.DAY_OF_YEAR)}"
+        val c = Calendar.getInstance()
+        c.timeInMillis = timestamp
+        return "${c.get(Calendar.YEAR)}-${c.get(Calendar.DAY_OF_YEAR)}"
     }
     
     val sessionMap = sessions.groupBy { getDayKey(it.date) }
     val achievementMap = achievements.filter { it.unlockedAt != null }.groupBy { getDayKey(it.unlockedAt!!) }
     
-    // Calculate columns: we show 14 weeks including current week
-    val today = Calendar.getInstance().apply {
-        set(Calendar.HOUR_OF_DAY, 0)
-        set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-    }
-    
-    // Find the Sunday of 13 weeks ago
-    val startDate = today.clone() as Calendar
-    startDate.add(Calendar.WEEK_OF_YEAR, -13)
-    while (startDate.get(Calendar.DAY_OF_WEEK) != Calendar.SUNDAY) {
-        startDate.add(Calendar.DAY_OF_YEAR, -1)
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        // Day Labels
-        Column(
-            modifier = Modifier.width(28.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            days.forEach { day ->
-                Box(modifier = Modifier.height(12.dp), contentAlignment = Alignment.CenterStart) {
-                    Text(text = day, fontSize = 9.sp, color = Color.Gray)
-                }
+            Text(monthName, fontWeight = FontWeight.Bold, color = NavyInk, fontSize = 14.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(8.dp).background(Color(0xFF10B981), CircleShape))
+                Spacer(Modifier.width(4.dp))
+                Text("Studied", fontSize = 11.sp, color = Color.Gray)
+                Spacer(Modifier.width(12.dp))
+                Box(Modifier.size(8.dp).background(Color(0xFFFBBF24), CircleShape))
+                Spacer(Modifier.width(4.dp))
+                Text("Badge", fontSize = 11.sp, color = Color.Gray)
             }
         }
         
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.height(16.dp))
         
-        // Heatmap circles
-        Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            repeat(14) { weekIndex ->
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    repeat(7) { dayIndex ->
-                        val cellDate = startDate.clone() as Calendar
-                        cellDate.add(Calendar.DAY_OF_YEAR, weekIndex * 7 + dayIndex)
+        // Month Grid
+        calendar.set(Calendar.DAY_OF_MONTH, 1)
+        val firstDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK) - 1
+        val daysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+        
+        val rows = (daysInMonth + firstDayOfWeek + 6) / 7
+        
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Day Labels
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                listOf("S", "M", "T", "W", "T", "F", "S").forEach { day ->
+                    Text(day, modifier = Modifier.width(32.dp), textAlign = TextAlign.Center, fontSize = 12.sp, color = Color.Gray)
+                }
+            }
+            
+            repeat(rows) { rowIndex ->
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    repeat(7) { colIndex ->
+                        val dayNumber = rowIndex * 7 + colIndex - firstDayOfWeek + 1
                         
-                        val dayKey = getDayKey(cellDate.timeInMillis)
-                        val daySessions = sessionMap[dayKey] ?: emptyList()
-                        val dayAchievements = achievementMap[dayKey] ?: emptyList()
-                        
-                        val studyCount = daySessions.sumOf { it.cardsStudied }
-                        
-                        // Color based on studyCount
-                        val bgColor = when {
-                            studyCount == 0 -> Color(0xFFF0F0F5)
-                            studyCount < 10 -> Color(0xFFDDD2FB)
-                            studyCount < 30 -> Color(0xFFB99CF8)
-                            studyCount < 60 -> Color(0xFF9061F9)
-                            else -> Color(0xFF7C3AED)
-                        }
-                        
-                        val hasActivities = studyCount > 0 || dayAchievements.isNotEmpty()
-                        val isToday = getDayKey(System.currentTimeMillis()) == dayKey
-
-                        Box(
-                            modifier = Modifier
-                                .size(12.dp)
-                                .background(bgColor, CircleShape)
-                                .then(
-                                    if (dayAchievements.isNotEmpty()) 
-                                        Modifier.border(1.2.dp, Color(0xFFFBBF24), CircleShape)
-                                    else if (isToday)
-                                        Modifier.border(1.dp, Color(0xFF10B981), CircleShape)
-                                    else Modifier
+                        if (dayNumber in 1..daysInMonth) {
+                            val tempCal = Calendar.getInstance().apply {
+                                set(Calendar.YEAR, currentYear)
+                                set(Calendar.MONTH, currentMonth)
+                                set(Calendar.DAY_OF_MONTH, dayNumber)
+                                set(Calendar.HOUR_OF_DAY, 0)
+                                set(Calendar.MINUTE, 0)
+                                set(Calendar.SECOND, 0)
+                                set(Calendar.MILLISECOND, 0)
+                            }
+                            
+                            val dayKey = getDayKey(tempCal.timeInMillis)
+                            val daySessions = sessionMap[dayKey] ?: emptyList()
+                            val dayAchievements = achievementMap[dayKey] ?: emptyList()
+                            val studyCount = daySessions.sumOf { it.cardsStudied }
+                            val isToday = getDayKey(System.currentTimeMillis()) == dayKey
+                            
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        when {
+                                            studyCount > 0 -> Color(0xFF10B981).copy(alpha = (studyCount.toFloat() / 50f).coerceIn(0.1f, 1f))
+                                            else -> Color(0xFFF8F9FB)
+                                        }
+                                    )
+                                    .border(
+                                        if (dayAchievements.isNotEmpty()) 1.5.dp else if (isToday) 1.dp else 0.dp,
+                                        if (dayAchievements.isNotEmpty()) Color(0xFFFBBF24) else if (isToday) Color(0xFF10B981) else Color.Transparent,
+                                        CircleShape
+                                    )
+                                    .clickable(enabled = studyCount > 0 || dayAchievements.isNotEmpty()) {
+                                        onDayClick(tempCal.timeInMillis, dayAchievements)
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    dayNumber.toString(),
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (studyCount > 0) Color.White else NavyInk
                                 )
-                                .clickable(enabled = hasActivities) { 
-                                    onDayClick(cellDate.timeInMillis, dayAchievements) 
-                                }
-                        )
+                            }
+                        } else {
+                            Box(modifier = Modifier.size(32.dp))
+                        }
                     }
                 }
             }

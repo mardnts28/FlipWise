@@ -118,4 +118,6 @@ dependencies {
 
     // Google Play Integrity API for client attestation
     implementation("com.google.android.play:integrity:1.3.0")
+    // Material Components for XML styles support
+    implementation(libs.google.material)
 }
