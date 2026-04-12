@@ -90,7 +90,7 @@ fun HomeScreen(
                         }
                     }
                     Text(
-                        text = greeting,
+                        text = "$greeting ${profile.username}",
                         fontSize = dimensions.headerFontSize,
                         fontWeight = FontWeight.Bold,
                         color = Color.White

@@ -286,7 +286,7 @@ fun RegisterScreen(
                         FlipWiseTextField(
                             value = password,
                             onValueChange = { password = it },
-                            placeholder = "At least 6 characters",
+                            placeholder = "Min 8 chars, 1 uppercase, 1 digit, 1 special",
                             leadingIcon = Icons.Rounded.Lock,
                             isPassword = true,
                             showPassword = showPassword,
@@ -321,17 +321,23 @@ fun RegisterScreen(
                                 error = "Please fill in all fields"
                             } else if (!email.lowercase().endsWith("@gmail.com")) {
                                 error = "Please enter a valid Gmail address (@gmail.com)"
-                            } else if (!"^[a-zA-Z0-9_]{3,20}$".toRegex().matches(nickname.trim())) {
-                                error = "Nickname must be 3-20 characters and only contain letters, numbers, or underscores"
-                            } else if (password.length < 6) {
-                                error = "Password must be at least 6 characters"
+                            } else if (nickname.trim().length < 3) {
+                                error = "Nickname must be at least 3 characters"
+                            } else if (password.length < 8) {
+                                error = "Password must be at least 8 characters"
+                            } else if (!password.any { it.isUpperCase() }) {
+                                error = "Password must contain at least one uppercase letter"
+                            } else if (!password.any { it.isDigit() }) {
+                                error = "Password must contain at least one digit"
+                            } else if (!password.any { !it.isLetterOrDigit() }) {
+                                error = "Password must contain at least one special character"
                             } else if (password != confirmPassword) {
                                 error = "Passwords do not match"
                             } else {
                                 isLoading = true
                                 error = null
                                 scope.launch {
-                                    if (profileViewModel.isUsernameTaken(nickname.trim())) {
+                                    if (profileViewModel.isUsernameTaken(nickname.trim().lowercase())) {
                                         error = "Username is already taken. Please pick another one."
                                         isLoading = false
                                         return@launch
@@ -340,7 +346,7 @@ fun RegisterScreen(
                                     val result = profileViewModel.signUp(email.trim(), password.trim())
                                     if (result.isSuccess) {
                                         // Initialize profile
-                                        profileViewModel.register(nickname.trim(), name.trim())
+                                        profileViewModel.register(nickname.trim().lowercase(), name.trim())
                                         onRegisterSuccess(email)
                                     } else {
                                         val e = result.exceptionOrNull()

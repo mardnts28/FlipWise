@@ -34,7 +34,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     suspend fun updateProfile(displayName: String, username: String, bio: String, avatar: String): Result<Unit> {
         return try {
-            val trimmedUsername = username.trim()
+            val trimmedUsername = username.trim().lowercase()
             if (trimmedUsername != userProfile.value.username) {
                 if (repository.isUsernameTaken(trimmedUsername)) {
                     return Result.failure(Exception("Username already taken"))
@@ -161,4 +161,15 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             repository.addChallenge(challenge)
         }
     }
+
+    suspend fun updateTotpSecret(secret: String) {
+        val current = userProfile.value
+        repository.updateProfile(current.copy(totpSecret = secret))
+    }
+
+    val isTotpEnabled: Boolean
+        get() = userProfile.value.totpSecret != null
+
+    val currentUserEmail: String
+        get() = repository.currentUserEmail
 }

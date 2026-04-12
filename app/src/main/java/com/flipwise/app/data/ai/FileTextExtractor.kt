@@ -127,15 +127,17 @@ class FileTextExtractor(private val context: Context) {
         val matcher = htmlTagPattern.matcher(xml)
         val plainText = matcher.replaceAll(" ")
         
-        // Clean up multi-whitespace and common XML entity references
+        // Clean up common XML entity references and ensure we don't have excessive spaces
         return plainText
             .replace("&amp;", "&")
             .replace("&lt;", "<")
             .replace("&gt;", ">")
             .replace("&quot;", "\"")
             .replace("&apos;", "'")
-            .replace(Regex("\\s+"), " ")
-            .trim()
+            .split("\n")
+            .map { it.replace(Regex("\\s+"), " ").trim() }
+            .filter { it.isNotBlank() }
+            .joinToString("\n")
     }
 
     private fun getFileName(uri: Uri): String {

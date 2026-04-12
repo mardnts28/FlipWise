@@ -58,6 +58,8 @@ class FlipWiseRepository(context: Context) {
     }
 
     // --- Authentication ---
+    val currentUserEmail: String get() = auth.currentUser?.email ?: ""
+
     suspend fun signUp(email: String, password: String): Result<Unit> {
         return try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
@@ -93,7 +95,9 @@ class FlipWiseRepository(context: Context) {
         auth.signOut()
         // Clear local database to align user profiles and data correctly
         repositoryScope.launch {
-            appDatabase.clearAllTables()
+            withContext(Dispatchers.IO) {
+                appDatabase.clearAllTables()
+            }
         }
     }
 
@@ -108,7 +112,9 @@ class FlipWiseRepository(context: Context) {
             remoteDatabase.child("users").child(currentUserId).removeValue().await()
             
             // 3. Clear local DB
-            appDatabase.clearAllTables()
+            withContext(Dispatchers.IO) {
+                appDatabase.clearAllTables()
+            }
             
             // 4. Delete Auth account
             user.delete().await()

@@ -37,6 +37,9 @@ sealed class Screen(val route: String) {
     object ChallengeGame : Screen("challenge_game/{challengeId}") {
         fun createRoute(challengeId: String) = "challenge_game/$challengeId"
     }
+    object Otp : Screen("otp/{email}") {
+        fun createRoute(email: String) = "otp/$email"
+    }
 }
 
 @Composable
@@ -82,9 +85,12 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                     scope.launch {
                         val profile = profileViewModel.fullSync()
                         val isGoogleUser = profileViewModel.isGoogleUser()
-                        // Check if username (nickname) is set to default "flipper" or blank
-                        // AND only redirect if it's a Gmail (Google) user
-                        if (isGoogleUser && (profile == null || profile.username == "flipper" || profile.username.isBlank())) {
+                        // Redirect existing email/password users to OTP
+                        if (!isGoogleUser) {
+                            navController.navigate(Screen.Otp.createRoute(profileViewModel.currentUserEmail)) {
+                                popUpTo(Screen.Login.route) { inclusive = true }
+                            }
+                        } else if (isGoogleUser && (profile == null || profile.username == "flipper" || profile.username.isBlank())) {
                             navController.navigate(Screen.CompleteProfile.route) {
                                 popUpTo(Screen.Login.route) { inclusive = true }
                             }
@@ -95,6 +101,22 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                         }
                     }
                 }
+            )
+        }
+
+        composable(
+            route = Screen.Otp.route,
+            arguments = listOf(navArgument("email") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email") ?: ""
+            OtpScreen(
+                email = email,
+                onVerifySuccess = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Otp.route) { inclusive = true }
+                    }
+                },
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -196,7 +218,10 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
         }
         
         composable(Screen.StudyTracker.route) { 
-            StudyTrackerScreen(onBack = { navController.popBackStack() }) 
+            StudyTrackerScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToDecks = { navController.navigate(Screen.DeckList.route) }
+            ) 
         }
 
         composable(Screen.Settings.route) {

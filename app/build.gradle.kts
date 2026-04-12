@@ -119,6 +119,10 @@ dependencies {
 
     // Google Play Integrity API for client attestation
     implementation("com.google.android.play:integrity:1.3.0")
+    
+    // QR Code generation for TOTP
+    implementation("com.google.zxing:core:3.5.3")
+
     // Material Components for XML styles support
     implementation(libs.google.material)
 }

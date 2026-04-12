@@ -187,9 +187,12 @@ fun AchievementsScreen(
 
     val friends by profileViewModel.friends.collectAsState(initial = emptyList())
 
+    val decks by viewModel.decks.collectAsState(initial = emptyList())
+
     if (showCreateGoalDialog) {
         CreateChallengeDialog(
             friends = friends,
+            decks = decks,
             onDismiss = { showCreateGoalDialog = false },
             onCreate = { challenge ->
                 profileViewModel.addChallenge(challenge)

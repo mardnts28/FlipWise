@@ -102,6 +102,7 @@ fun StudyModeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(studyBackgroundColor)
+                .verticalScroll(rememberScrollState())
         ) {
             Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
                 Row(
@@ -137,15 +138,15 @@ fun StudyModeScreen(
                 )
             }
 
-            Spacer(Modifier.weight(1f))
-
+            Spacer(Modifier.height(32.dp))
+            
             val isMultipleChoice = !currentCard.options.isNullOrEmpty()
             
             Box(
                 modifier = Modifier
                     .padding(horizontal = 32.dp)
                     .fillMaxWidth()
-                    .aspectRatio(0.8f)
+                    .height(400.dp) // Fixed height to avoid weight issues in scroll
                     .graphicsLayer {
                         rotationY = if (isMultipleChoice) 0f else rotation
                         cameraDistance = 12f * density
@@ -174,10 +175,10 @@ fun StudyModeScreen(
                 }
             }
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(32.dp))
 
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().fillMaxHeight(),
                 shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
                 color = Color.White,
                 shadowElevation = 16.dp

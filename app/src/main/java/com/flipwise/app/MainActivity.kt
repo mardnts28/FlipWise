@@ -16,6 +16,9 @@ import com.flipwise.app.ui.theme.FlipWiseTheme
 
 import com.google.firebase.FirebaseApp
 import android.util.Log
+import androidx.work.*
+import com.flipwise.app.worker.StudyReminderWorker
+import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,6 +36,8 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             Log.e("Firebase", "Firebase initialization failed", e)
         }
+
+        scheduleStudyReminders()
 
         setContent {
             FlipWiseTheme {
@@ -61,5 +66,21 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun scheduleStudyReminders() {
+        val workRequest = PeriodicWorkRequestBuilder<StudyReminderWorker>(
+            24, TimeUnit.HOURS
+        ).setConstraints(
+            Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
+                .build()
+        ).build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "study_reminders",
+            ExistingPeriodicWorkPolicy.KEEP,
+            workRequest
+        )
     }
 }

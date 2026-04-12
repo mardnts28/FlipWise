@@ -55,6 +55,7 @@ fun DeckDetailScreen(
 
     var showAddCardChoiceDialog by remember { mutableStateOf(false) }
     var showAddCardDialog by remember { mutableStateOf(false) }
+    var showEditDeckDialog by remember { mutableStateOf(false) }
     var editingCard by remember { mutableStateOf<Flashcard?>(null) }
 
     val aiGenerationState by viewModel.aiGenerationState.collectAsState()
@@ -84,7 +85,7 @@ fun DeckDetailScreen(
                         IconButton(onClick = onBack, modifier = Modifier.offset(x = (-12).dp)) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                         }
-                        IconButton(onClick = { }) {
+                        IconButton(onClick = { showEditDeckDialog = true }) {
                             Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White)
                         }
                     }
@@ -200,6 +201,49 @@ fun DeckDetailScreen(
                 }
                 showAddCardDialog = false
                 editingCard = null
+            }
+        )
+    }
+
+    if (showEditDeckDialog && deck != null) {
+        var newName by remember { mutableStateOf(deck.name) }
+        var error by remember { mutableStateOf<String?>(null) }
+        
+        AlertDialog(
+            onDismissRequest = { showEditDeckDialog = false },
+            title = { Text("Edit Deck Name") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it; error = null },
+                        label = { Text("Deck Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = error != null
+                    )
+                    if (error != null) {
+                        Text(error!!, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (newName.isBlank()) {
+                        error = "Name cannot be empty"
+                    } else if (newName != deck.name && decks.any { it.name.equals(newName, ignoreCase = true) }) {
+                        error = "A deck with this name already exists"
+                    } else {
+                        viewModel.updateDeck(deck.copy(name = newName))
+                        showEditDeckDialog = false
+                    }
+                }) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditDeckDialog = false }) {
+                    Text("Cancel")
+                }
             }
         )
     }

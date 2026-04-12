@@ -42,6 +42,7 @@ import com.flipwise.app.ui.theme.*
 @Composable
 fun StudyTrackerScreen(
     onBack: () -> Unit,
+    onNavigateToDecks: () -> Unit,
     viewModel: DeckViewModel = viewModel()
 ) {
     val achievements by viewModel.achievements.collectAsState(initial = emptyList())
@@ -266,7 +267,8 @@ fun StudyTrackerScreen(
         AchievementsUnlockedDialog(
             unlockedAchievements = selectedAchievements,
             selectedDate = selectedDate,
-            onDismiss = { showAchievementDialog = false }
+            onDismiss = { showAchievementDialog = false },
+            onNavigateToDecks = onNavigateToDecks
         )
     }
 }
@@ -275,7 +277,8 @@ fun StudyTrackerScreen(
 fun AchievementsUnlockedDialog(
     unlockedAchievements: List<Achievement>,
     selectedDate: Long? = null,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onNavigateToDecks: () -> Unit
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -341,6 +344,7 @@ fun AchievementsUnlockedDialog(
 
                 // Bottom Badge/Button
                 Surface(
+                    onClick = onNavigateToDecks,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     color = Color(0xFF7C3AED)

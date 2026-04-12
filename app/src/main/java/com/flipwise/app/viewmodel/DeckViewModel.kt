@@ -192,6 +192,12 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun updateDeck(deck: Deck) {
+        viewModelScope.launch {
+            repository.updateDeck(deck)
+        }
+    }
+
     fun deleteDeck(deckId: String) {
         viewModelScope.launch {
             repository.deleteDeck(deckId)
