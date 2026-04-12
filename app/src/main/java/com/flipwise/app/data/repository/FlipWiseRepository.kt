@@ -12,8 +12,14 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.withContext
 
 class FlipWiseRepository(context: Context) {
+    private val repositoryScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
     private val appDatabase by lazy { AppDatabase.getDatabase(context) }
     private val deckDao    by lazy { appDatabase.deckDao() }
     private val flashcardDao by lazy { appDatabase.flashcardDao() }
@@ -86,8 +92,7 @@ class FlipWiseRepository(context: Context) {
     fun signOut() {
         auth.signOut()
         // Clear local database to align user profiles and data correctly
-        @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
-        kotlinx.coroutines.GlobalScope.launch {
+        repositoryScope.launch {
             appDatabase.clearAllTables()
         }
     }
@@ -179,11 +184,11 @@ class FlipWiseRepository(context: Context) {
 
     suspend fun updateProfile(profile: UserProfile) {
         profileDao.insertProfile(profile)
-        // Sync to cloud
-        remoteDatabase.child("users").child(userId).child("profile").setValue(profile).await()
-        // Save to public leaderboard reference (Direct write restored)
-        remoteDatabase.child("leaderboard").child(userId).setValue(
-            mapOf(
+        
+        // Atomic multi-path update to keep private profile and public leaderboard in sync
+        val updates = hashMapOf<String, Any>(
+            "users/$userId/profile" to profile,
+            "leaderboard/$userId" to mapOf(
                 "id" to userId,
                 "username" to profile.username,
                 "displayName" to profile.displayName,
@@ -192,7 +197,8 @@ class FlipWiseRepository(context: Context) {
                 "xp" to profile.xp,
                 "level" to profile.level
             )
-        ).await()
+        )
+        remoteDatabase.updateChildren(updates).await()
     }
 
     suspend fun syncProfile(): UserProfile? {
@@ -316,10 +322,11 @@ class FlipWiseRepository(context: Context) {
             val snapshot = remoteDatabase.child("leaderboard")
                 .orderByChild("username")
                 .equalTo(username.trim())
-                .limitToFirst(1)
                 .get()
                 .await()
-            snapshot.hasChildren()
+            
+            // Check if any user other than the current one has this username
+            snapshot.children.any { it.key != userId }
         } catch (e: Exception) {
             false
         }
@@ -420,8 +427,7 @@ class FlipWiseRepository(context: Context) {
                 trySend(friends)
                 
                 // Keep local DB in sync
-                @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
-                kotlinx.coroutines.GlobalScope.launch {
+                repositoryScope.launch {
                     friends.forEach { appDatabase.friendDao().insertFriend(it) }
                 }
             }

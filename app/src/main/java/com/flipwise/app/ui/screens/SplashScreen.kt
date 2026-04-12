@@ -12,11 +12,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.flipwise.app.R
-import com.flipwise.app.ui.theme.GrapePop
+import com.flipwise.app.ui.theme.*
 import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(onNavigateNext: () -> Unit) {
+    val dimensions = FlipWiseDesign.dimensions
     LaunchedEffect(Unit) {
         delay(2000)
         onNavigateNext()
@@ -29,12 +30,21 @@ fun SplashScreen(onNavigateNext: () -> Unit) {
             Image(
                 painter = painterResource(id = R.drawable.app_logo),
                 contentDescription = "FlipWise Logo",
-                modifier = Modifier.size(120.dp)
+                modifier = Modifier.size(dimensions.logoSize)
             )
-            Spacer(Modifier.height(24.dp))
-            Text("FlipWise", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Spacer(Modifier.height(8.dp))
-            Text("Master your knowledge, one flip at a time", fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f))
+            Spacer(Modifier.height(dimensions.paddingMedium))
+            Text(
+                "FlipWise", 
+                fontSize = dimensions.headerFontSize, 
+                fontWeight = FontWeight.Bold, 
+                color = Color.White
+            )
+            Spacer(Modifier.height(dimensions.paddingSmall))
+            Text(
+                "Master your knowledge, one flip at a time", 
+                fontSize = dimensions.detailFontSize, 
+                color = Color.White.copy(alpha = 0.8f)
+            )
         }
     }
 }

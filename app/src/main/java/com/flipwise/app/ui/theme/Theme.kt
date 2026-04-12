@@ -19,9 +19,11 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun FlipWiseTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = LightColorScheme,
-        typography  = Typography,
-        content     = content
-    )
+    ProvideResponsiveDimensions {
+        MaterialTheme(
+            colorScheme = LightColorScheme,
+            typography  = Typography,
+            content     = content
+        )
+    }
 }

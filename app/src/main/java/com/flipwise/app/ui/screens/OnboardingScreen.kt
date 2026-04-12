@@ -46,6 +46,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
             iconBg = Color(0xFFFBBF24)
         )
     )
+    val dimensions = FlipWiseDesign.dimensions
     var currentSlide by remember { mutableIntStateOf(0) }
 
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF8F7FF))) {
@@ -62,15 +63,16 @@ fun OnboardingScreen(onComplete: () -> Unit) {
 
         Column(
             modifier = Modifier
+                .widthIn(max = 800.dp)
                 .fillMaxSize()
-                .padding(horizontal = 40.dp),
+                .padding(horizontal = dimensions.paddingLarge),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             val slide = slides[currentSlide]
             
             Surface(
-                modifier = Modifier.size(160.dp),
+                modifier = Modifier.size(if (dimensions.isTablet) 240.dp else 160.dp),
                 shape = CircleShape,
                 color = slide.iconBg.copy(alpha = 0.9f)
             ) {
@@ -78,7 +80,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                     Icon(
                         imageVector = slide.icon,
                         contentDescription = null,
-                        modifier = Modifier.size(72.dp),
+                        modifier = Modifier.size(if (dimensions.isTablet) 120.dp else 72.dp),
                         tint = Color.White
                     )
                 }
@@ -88,7 +90,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
             
             Text(
                 text = slide.title,
-                fontSize = 28.sp,
+                fontSize = dimensions.headerFontSize,
                 fontWeight = FontWeight.Bold,
                 color = NavyInk,
                 textAlign = TextAlign.Center
@@ -98,10 +100,10 @@ fun OnboardingScreen(onComplete: () -> Unit) {
             
             Text(
                 text = slide.description,
-                fontSize = 16.sp,
+                fontSize = dimensions.bodyFontSize,
                 color = NavyInk60,
                 textAlign = TextAlign.Center,
-                lineHeight = 24.sp
+                lineHeight = if (dimensions.isTablet) 32.sp else 24.sp
             )
             
             Spacer(Modifier.height(80.dp))
@@ -142,9 +144,10 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                     }
                 },
                 modifier = Modifier
+                    .widthIn(max = 600.dp)
                     .fillMaxWidth()
-                    .height(56.dp)
-                    .padding(horizontal = 32.dp),
+                    .height(dimensions.buttonHeight)
+                    .padding(horizontal = dimensions.paddingMedium),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = GrapePop)
             ) {

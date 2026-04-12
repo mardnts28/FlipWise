@@ -38,6 +38,7 @@ fun HomeScreen(
     val decks by viewModel.decks.collectAsState(initial = emptyList())
     val progress by viewModel.userProgress.collectAsState()
     val friends by profileViewModel.friends.collectAsState(initial = emptyList())
+    val dimensions = FlipWiseDesign.dimensions
     
     var showCreateDialog by remember { mutableStateOf(false) }
     var showFriendNotification by remember { mutableStateOf(false) }
@@ -60,16 +61,21 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFFBFBFF))
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // --- Header Section ---
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 40.dp)),
+                .clip(RoundedCornerShape(bottomStart = dimensions.cardCornerRadius, bottomEnd = dimensions.cardCornerRadius)),
             color = Color(0xFF7C3AED)
         ) {
-            Column(modifier = Modifier.padding(24.dp)) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 1200.dp)
+                    .padding(dimensions.paddingLarge)
+            ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -85,7 +91,7 @@ fun HomeScreen(
                     }
                     Text(
                         text = greeting,
-                        fontSize = 32.sp,
+                        fontSize = dimensions.headerFontSize,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
@@ -95,7 +101,7 @@ fun HomeScreen(
                 }
                 Text(
                     text = "Ready to learn something new?",
-                    fontSize = 16.sp,
+                    fontSize = dimensions.bodyFontSize,
                     color = Color.White.copy(alpha = 0.8f)
                 )
                 
@@ -139,10 +145,11 @@ fun HomeScreen(
         // --- Cards Studied/Mastered Row ---
         Row(
             modifier = Modifier
+                .widthIn(max = 1200.dp)
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = dimensions.paddingLarge)
                 .offset(y = (-30).dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(dimensions.paddingMedium)
         ) {
             Surface(
                 modifier = Modifier.weight(1f),
@@ -170,73 +177,96 @@ fun HomeScreen(
         }
 
         // --- Quick Actions Section ---
-        Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-            Text("Quick Actions", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
-            Spacer(Modifier.height(16.dp))
+        Column(
+            modifier = Modifier
+                .widthIn(max = 1200.dp)
+                .fillMaxWidth()
+                .padding(horizontal = dimensions.paddingLarge)
+        ) {
+            Text("Quick Actions", fontSize = dimensions.headerFontSize, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+            Spacer(Modifier.height(dimensions.paddingMedium))
             
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                // Continue Studying
-                val lastDeckId = recentDecks.firstOrNull()?.id
-                Surface(
-                    modifier = Modifier.weight(1f).height(160.dp).clickable { onNavigateToStudy(lastDeckId) },
-                    shape = RoundedCornerShape(24.dp),
-                    color = Color(0xFF7C3AED)
-                ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Icon(Icons.Default.Book, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
-                        Spacer(Modifier.weight(1f))
-                        Text("Continue Studying", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        Text(recentDecks.firstOrNull()?.name ?: "No decks yet", fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
-                    }
+            if (dimensions.isTablet) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(dimensions.paddingMedium)) {
+                    QuickActionCard(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Book,
+                        title = "Continue Studying",
+                        subtitle = recentDecks.firstOrNull()?.name ?: "No decks yet",
+                        color = Color(0xFF7C3AED),
+                        onClick = { onNavigateToStudy(recentDecks.firstOrNull()?.id) }
+                    )
+                    QuickActionCard(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Add,
+                        title = "Create New Deck",
+                        subtitle = "Add content",
+                        color = Color(0xFFF97316),
+                        onClick = { showCreateDialog = true }
+                    )
+                    QuickActionCard(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Psychology,
+                        title = "Practice Cards",
+                        subtitle = "Flashcard mix",
+                        color = Color(0xFFFBBF24),
+                        onClick = { onNavigateToStudy(null) }
+                    )
                 }
-                // Create New Deck
-                Surface(
-                    modifier = Modifier.weight(1f).height(160.dp).clickable { showCreateDialog = true },
-                    shape = RoundedCornerShape(24.dp),
-                    color = Color(0xFFF97316)
-                ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
-                        Spacer(Modifier.weight(1f))
-                        Text("Create New Deck", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        Text("Add content", fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
-                    }
+            } else {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    QuickActionCard(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Book,
+                        title = "Continue Study",
+                        subtitle = recentDecks.firstOrNull()?.name ?: "Start here",
+                        color = Color(0xFF7C3AED),
+                        onClick = { onNavigateToStudy(recentDecks.firstOrNull()?.id) }
+                    )
+                    QuickActionCard(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Add,
+                        title = "New Deck",
+                        subtitle = "Add content",
+                        color = Color(0xFFF97316),
+                        onClick = { showCreateDialog = true }
+                    )
                 }
-            }
-            
-            Spacer(Modifier.height(16.dp))
-            
-            // Practice Cards
-            Surface(
-                modifier = Modifier.fillMaxWidth().height(140.dp).clickable { onNavigateToStudy(null) },
-                shape = RoundedCornerShape(24.dp),
-                color = Color(0xFFFBBF24)
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Icon(Icons.Default.Psychology, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
-                    Spacer(Modifier.weight(1f))
-                    Text("Practice Cards", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Text("Flashcard mix", fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
-                }
+                Spacer(Modifier.height(16.dp))
+                QuickActionCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    height = 120.dp,
+                    icon = Icons.Default.Psychology,
+                    title = "Practice Cards",
+                    subtitle = "Flashcard mix",
+                    color = Color(0xFFFBBF24),
+                    onClick = { onNavigateToStudy(null) }
+                )
             }
         }
 
         // --- Recent Decks Section ---
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(dimensions.paddingLarge))
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+            modifier = Modifier
+                .widthIn(max = 1200.dp)
+                .fillMaxWidth()
+                .padding(horizontal = dimensions.paddingLarge),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Recent Decks", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+            Text("Recent Decks", fontSize = dimensions.headerFontSize, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
             TextButton(onClick = onNavigateToDecks) {
-                Text("View All", color = Color(0xFF7C3AED), fontWeight = FontWeight.Bold)
+                Text("View All", color = Color(0xFF7C3AED), fontWeight = FontWeight.Bold, fontSize = dimensions.bodyFontSize)
             }
         }
         
         Column(
-            modifier = Modifier.padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier
+                .widthIn(max = 1200.dp)
+                .fillMaxWidth()
+                .padding(horizontal = dimensions.paddingLarge),
+            verticalArrangement = Arrangement.spacedBy(dimensions.paddingSmall)
         ) {
             if (recentDecks.isEmpty()) {
                 Text("Your decks will appear here.", color = Color.Gray, modifier = Modifier.padding(8.dp))
@@ -323,6 +353,46 @@ fun RecentDeckItem(deck: Deck, onClick: () -> Unit) {
                 Text("${deck.masteredCount}/${deck.cardCount}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
                 Text("mastered", fontSize = 11.sp, color = Color(0xFF10B981))
             }
+        }
+    }
+}
+
+@Composable
+fun QuickActionCard(
+    modifier: Modifier = Modifier,
+    height: androidx.compose.ui.unit.Dp = 160.dp,
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    color: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = modifier
+            .height(height)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(FlipWiseDesign.dimensions.cardCornerRadius / 1.5f),
+        color = color
+    ) {
+        Column(modifier = Modifier.padding(FlipWiseDesign.dimensions.paddingMedium)) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(if (FlipWiseDesign.dimensions.isTablet) 48.dp else 32.dp)
+            )
+            Spacer(Modifier.weight(1f))
+            Text(
+                text = title,
+                fontSize = FlipWiseDesign.dimensions.bodyFontSize,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Text(
+                text = subtitle,
+                fontSize = FlipWiseDesign.dimensions.detailFontSize,
+                color = Color.White.copy(alpha = 0.8f)
+            )
         }
     }
 }
