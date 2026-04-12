@@ -62,11 +62,6 @@ data class UserProgress(
     val lastStudyDate: Long? = null
 )
 
-data class UserStats(
-    val totalPoints: Int = 0,
-    val totalCardsStudied: Int = 0,
-    val currentStreak: Int = 0
-)
 
 @Parcelize
 @Entity(tableName = "user_profile")

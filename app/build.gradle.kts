@@ -51,7 +51,7 @@ android {
     }
 
     buildFeatures {
-        viewBinding = true
+        viewBinding = false
         compose = true
         buildConfig = true
     }
@@ -65,9 +65,6 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
-    implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.material:material:1.11.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -103,7 +100,6 @@ dependencies {
     implementation(libs.firebase.database)
     implementation(libs.firebase.auth)
     implementation(libs.play.services.auth)
-    implementation(libs.firebase.firestore)
     implementation(libs.kotlinx.coroutines.play.services)
 
     testImplementation(libs.junit)
