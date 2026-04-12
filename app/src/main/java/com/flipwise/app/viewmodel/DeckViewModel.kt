@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.flipwise.app.data.ai.FileTextExtractor
 import com.flipwise.app.data.ai.GeminiFlashcardGenerator
+import com.flipwise.app.data.ai.GeneratedCard
 import com.flipwise.app.data.database.AppDatabase
 import com.flipwise.app.data.model.*
 import kotlinx.coroutines.flow.*
@@ -180,6 +181,12 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
 
     // ─── Decks ───────────────────────────────────────────────────
     fun getCardsForDeck(deckId: String) = repository.getCardsForDeck(deckId)
+    
+    fun getCardsForDecks(deckIds: List<String>): Flow<List<Flashcard>> {
+        if (deckIds.isEmpty()) return flowOf(emptyList())
+        val flows = deckIds.map { repository.getCardsForDeck(it) }
+        return combine(flows) { arrays -> arrays.flatMap { it } }
+    }
 
     fun createDeck(name: String, subject: String, color: String, icon: String) {
         viewModelScope.launch {
@@ -362,8 +369,8 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun generateFallbackCards(text: String): List<GeminiFlashcardGenerator.GeneratedFlashcard> {
-        val cards = mutableListOf<GeminiFlashcardGenerator.GeneratedFlashcard>()
+    private fun generateFallbackCards(text: String): List<GeneratedCard> {
+        val cards = mutableListOf<GeneratedCard>()
         val lines = text.split("\n").filter { it.isNotBlank() }
         
         // Simple fallback: Try to find "Question: Answer" patterns or just use adjacent lines
@@ -378,14 +385,14 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
                 // Occasionally create multiple choice if we have enough lines
                 if (i + 4 < lines.size && i % 3 == 0) {
                     val wrongOptions = listOf(lines[i+2].trim(), lines[i+3].trim(), lines[i+4].trim())
-                    cards.add(GeminiFlashcardGenerator.GeneratedFlashcard(
+                    cards.add(GeneratedCard(
                         front = question,
                         back = answer,
                         options = (wrongOptions + answer).shuffled()
                     ))
                     i += 5
                 } else {
-                    cards.add(GeminiFlashcardGenerator.GeneratedFlashcard(
+                    cards.add(GeneratedCard(
                         front = question,
                         back = answer,
                         options = null
@@ -399,13 +406,13 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
         
         // If still empty, just take any lines
         if (cards.isEmpty() && lines.size >= 2) {
-            cards.add(GeminiFlashcardGenerator.GeneratedFlashcard(front = lines[0], back = lines[1], options = null))
+            cards.add(GeneratedCard(front = lines[0], back = lines[1], options = null))
         }
         
         return cards
     }
 
-    private suspend fun saveGeneratedCards(deckId: String, generatedCards: List<GeminiFlashcardGenerator.GeneratedFlashcard>) {
+    private suspend fun saveGeneratedCards(deckId: String, generatedCards: List<GeneratedCard>) {
         var savedCount = 0
         for (card in generatedCards) {
             try {

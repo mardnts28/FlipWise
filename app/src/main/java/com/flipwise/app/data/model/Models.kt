@@ -104,16 +104,19 @@ data class Challenge(
     @PrimaryKey val id: String,
     val name: String,
     val description: String,
-    val type: String,
-    val goal: Int,
-    val goalType: String,
-    val startDate: Long,
-    val endDate: Long,
-    val status: String,
-    val createdBy: String,
-    val participants: String,
-    val deckId: String? = null
+    val type: String, // "versus" or "team"
+    val subType: String = "1v1", // "1v1" or "team_vs_team"
+    val goal: Int = 0,
+    val goalType: String = "Score",
+    val timeLimit: Int = 300, // Seconds, default 5 mins
+    val startDate: Long = System.currentTimeMillis(),
+    val endDate: Long = System.currentTimeMillis() + 86400000,
+    val status: String = "active",
+    val createdBy: String = "local_user",
+    val participants: String = "local_user", // Comma-separated user IDs
+    val deckIds: String = "" // Comma-separated deck IDs
 ) : Parcelable
+
 
 sealed class AiGenerationState {
     object Idle : AiGenerationState()

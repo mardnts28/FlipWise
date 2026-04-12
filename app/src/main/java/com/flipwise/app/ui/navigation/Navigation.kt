@@ -34,6 +34,9 @@ sealed class Screen(val route: String) {
     object ChallengeDetail : Screen("challenge/{challengeId}") {
         fun createRoute(challengeId: String) = "challenge/$challengeId"
     }
+    object ChallengeGame : Screen("challenge_game/{challengeId}") {
+        fun createRoute(challengeId: String) = "challenge_game/$challengeId"
+    }
 }
 
 @Composable
@@ -214,7 +217,8 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
 
         composable(Screen.Profile.route) {
             ProfileScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToChallengeGame = { id -> navController.navigate(Screen.ChallengeGame.createRoute(id)) }
             )
         }
 
@@ -228,6 +232,22 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
         ) { backStackEntry ->
             val id = backStackEntry.arguments?.getString("challengeId") ?: return@composable
             ChallengeDetailScreen(challengeId = id, onBack = { navController.popBackStack() })
+        }
+
+        composable(
+            route     = Screen.ChallengeGame.route,
+            arguments = listOf(navArgument("challengeId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("challengeId") ?: return@composable
+            ChallengeGameScreen(
+                challengeId = id,
+                onBack = { navController.popBackStack() },
+                onNavigateHome = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                }
+            )
         }
     }
 }

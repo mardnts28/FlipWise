@@ -18,7 +18,9 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PeopleOutline
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.PersonRemove
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
@@ -40,7 +42,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileScreen(
-    onNavigateBack: () -> Unit, 
+    onNavigateBack: () -> Unit,
+    onNavigateToChallengeGame: (String) -> Unit,
     viewModel: ProfileViewModel = viewModel()
 ) {
     val profile by viewModel.userProfile.collectAsState()
@@ -247,7 +250,6 @@ fun ProfileScreen(
                             }
                         }
                     }
-                    }
                 }
                 2 -> {
                     Row(
@@ -277,57 +279,63 @@ fun ProfileScreen(
                         )
                     } else {
                         challenges.forEach { challenge ->
-                            val deck = decks.find { it.id == challenge.deckId }
-                            ProfileChallengeItem(challenge = challenge, deck = deck)
+                            val decksInChallenge = decks.filter { challenge.deckIds.contains(it.id) }
+                            ProfileChallengeItem(
+                                challenge = challenge, 
+                                decks = decksInChallenge,
+                                onClick = { onNavigateToChallengeGame(challenge.id) }
+                            )
                             Spacer(Modifier.height(12.dp))
                         }
+                    }
                     }
                 }
             }
             Spacer(Modifier.height(100.dp))
         }
-    }
 
-    if (showEditProfile) {
-        EditProfileDialog(
-            profile = profile,
-            onDismiss = { showEditProfile = false },
-            onSave = { updatedProfile ->
-                scope.launch {
-                    viewModel.updateProfile(
-                        updatedProfile.displayName,
-                        updatedProfile.username,
-                        updatedProfile.bio,
-                        updatedProfile.avatar
-                    )
+        if (showEditProfile) {
+            EditProfileDialog(
+                profile = profile,
+                onDismiss = { showEditProfile = false },
+                onSave = { updatedProfile ->
+                    scope.launch {
+                        viewModel.updateProfile(
+                            updatedProfile.displayName,
+                            updatedProfile.username,
+                            updatedProfile.bio,
+                            updatedProfile.avatar
+                        )
+                    }
+                    showEditProfile = false
                 }
-                showEditProfile = false
-            }
-        )
+            )
+        }
+
+        if (showAddChallenge) {
+            com.flipwise.app.ui.components.CreateChallengeDialog(
+                friends = friends,
+                decks = decks,
+                onDismiss = { showAddChallenge = false },
+                onCreate = { challenge ->
+                    viewModel.addChallenge(challenge)
+                    showAddChallenge = false
+                    onNavigateToChallengeGame(challenge.id)
+                }
+            )
+        }
+
+        if (showAddFriend) {
+            AddFriendStyledDialog(
+                onDismiss = { showAddFriend = false },
+                onAdd = { username ->
+                    viewModel.addFriend(username)
+                    showAddFriend = false
+                }
+            )
+        }
     }
 
-    if (showAddChallenge) {
-        com.flipwise.app.ui.components.CreateChallengeDialog(
-            friends = friends,
-            decks = decks,
-            onDismiss = { showAddChallenge = false },
-            onCreate = { challenge ->
-                viewModel.addChallenge(challenge)
-                showAddChallenge = false
-            }
-        )
-    }
-
-    if (showAddFriend) {
-        AddFriendStyledDialog(
-            onDismiss = { showAddFriend = false },
-            onAdd = { username ->
-                viewModel.addFriend(username)
-                showAddFriend = false
-            }
-        )
-    }
-}
 
 @Composable
 fun RecentActivityItem(session: StudySession) {
@@ -727,8 +735,13 @@ fun FriendItem(friend: Friend, onDelete: () -> Unit) {
 }
 
 @Composable
-fun ProfileChallengeItem(challenge: com.flipwise.app.data.model.Challenge, deck: com.flipwise.app.data.model.Deck?) {
+fun ProfileChallengeItem(
+    challenge: com.flipwise.app.data.model.Challenge, 
+    decks: List<com.flipwise.app.data.model.Deck>,
+    onClick: () -> Unit
+) {
     Surface(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         color = Color.White,
@@ -742,25 +755,25 @@ fun ProfileChallengeItem(challenge: com.flipwise.app.data.model.Challenge, deck:
                 modifier = Modifier
                     .size(52.dp)
                     .background(
-                        color = try { Color(android.graphics.Color.parseColor(deck?.color ?: "#7C3AED")) } catch (e: Exception) { Color(0xFF7C3AED) },
+                        color = try { Color(android.graphics.Color.parseColor(decks.firstOrNull()?.color ?: "#7C3AED")) } catch (e: Exception) { Color(0xFF7C3AED) },
                         shape = RoundedCornerShape(12.dp)
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Text(deck?.icon ?: "🎮", fontSize = 24.sp)
+                Text(decks.firstOrNull()?.icon ?: "🎮", fontSize = 24.sp)
             }
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(challenge.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF1E1B4B))
                 Text(
-                    text = if (challenge.type == "versus") "Versus Battle ⚔\uFE0F" else "Group Quest \uD83D\uDC65",
+                    text = if (challenge.subType == "1v1") "1 vs 1 Battle ⚔\uFE0F" else "Teams Clash \uD83D\uDCAA",
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("${challenge.goal}", fontWeight = FontWeight.Bold, color = Color(0xFF7C3AED), fontSize = 18.sp)
-                Text(challenge.goalType, fontSize = 11.sp, color = Color.Gray)
+                Text("${challenge.timeLimit / 60}m", fontWeight = FontWeight.Bold, color = Color(0xFF7C3AED), fontSize = 18.sp)
+                Text("Limit", fontSize = 11.sp, color = Color.Gray)
             }
         }
     }
