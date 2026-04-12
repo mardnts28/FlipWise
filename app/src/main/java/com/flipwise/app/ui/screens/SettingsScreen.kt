@@ -33,6 +33,7 @@ import androidx.compose.material.icons.rounded.*
 fun SettingsScreen(
     onBack: () -> Unit,
     onNavigateToProfile: () -> Unit = {},
+    onNavigateToOnboarding: () -> Unit = {},
     onLogout: () -> Unit = {},
     onAccountDeleted: () -> Unit = {},
     viewModel: DeckViewModel = viewModel(),
@@ -186,12 +187,11 @@ fun SettingsScreen(
                 HorizontalDivider(color = GhostWhite, thickness = 1.dp)
 
                 DangerActionRow(
-                    icon = Icons.AutoMirrored.Rounded.Logout,
+                    icon = Icons.Rounded.RestartAlt,
                     title = "Reset Onboarding",
                     description = "See the welcome tutorial again",
                     onClick = { 
-                        viewModel.clearAllData()
-                        onBack()
+                        onNavigateToOnboarding()
                     }
                 )
 

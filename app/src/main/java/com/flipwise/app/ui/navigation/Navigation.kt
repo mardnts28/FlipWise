@@ -201,6 +201,7 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
             SettingsScreen(
                 onBack = { navController.popBackStack() },
                 onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
+                onNavigateToOnboarding = { navController.navigate(Screen.Onboarding.route) },
                 onLogout = {
                     profileViewModel.signOut()
                     navController.navigate(Screen.Login.route) {
