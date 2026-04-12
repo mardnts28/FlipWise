@@ -61,8 +61,6 @@ data class UserProgress(
     val totalCardsStudied: Int = 0,
     val lastStudyDate: Long? = null
 )
-
-
 @Parcelize
 @Entity(tableName = "user_profile")
 data class UserProfile(
@@ -112,7 +110,6 @@ data class Challenge(
     val participants: String = "local_user", // Comma-separated user IDs
     val deckIds: String = "" // Comma-separated deck IDs
 ) : Parcelable
-
 
 sealed class AiGenerationState {
     object Idle : AiGenerationState()
