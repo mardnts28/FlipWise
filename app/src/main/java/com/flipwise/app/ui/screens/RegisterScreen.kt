@@ -30,6 +30,9 @@ import androidx.compose.ui.unit.sp
 import com.flipwise.app.R
 import com.flipwise.app.ui.theme.*
 import com.flipwise.app.ui.components.FlipWiseTextField
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 fun calculatePasswordStrength(password: String): Int {
     if (password.isEmpty()) return 0
