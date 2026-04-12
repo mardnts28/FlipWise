@@ -12,7 +12,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.TrackChanges
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -131,16 +136,18 @@ fun StudyModeScreen(
 
             Spacer(Modifier.weight(1f))
 
+            val isMultipleChoice = !currentCard.options.isNullOrEmpty()
+            
             Box(
                 modifier = Modifier
                     .padding(horizontal = 32.dp)
                     .fillMaxWidth()
                     .aspectRatio(0.8f)
                     .graphicsLayer {
-                        rotationY = rotation
+                        rotationY = if (isMultipleChoice) 0f else rotation
                         cameraDistance = 12f * density
                     }
-                    .clickable { isFlipped = !isFlipped },
+                    .clickable(enabled = !isMultipleChoice) { isFlipped = !isFlipped },
                 contentAlignment = Alignment.Center
             ) {
                 Surface(
@@ -151,13 +158,13 @@ fun StudyModeScreen(
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(24.dp)) {
                         Text(
-                            text = if (rotation < 90f) currentCard.front else currentCard.back,
+                            text = if (isMultipleChoice || rotation < 90f) currentCard.front else currentCard.back,
                             fontSize = 32.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF1E1B4B),
                             textAlign = TextAlign.Center,
                             modifier = Modifier.graphicsLayer {
-                                rotationY = if (rotation < 90f) 0f else 180f
+                                rotationY = if (isMultipleChoice || rotation < 90f) 0f else 180f
                             }
                         )
                     }

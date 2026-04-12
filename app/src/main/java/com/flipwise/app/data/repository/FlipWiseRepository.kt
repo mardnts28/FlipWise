@@ -312,26 +312,78 @@ class FlipWiseRepository(context: Context) {
     }
 
     suspend fun addFriend(targetId: String, targetProfile: UserProfile) {
-        // 1. Add to my friends list in cloud
-        val friendEntry = Friend(
+        val currentProfile = userProfile.firstOrNull() ?: UserProfile(id = userId)
+        
+        // 1. Add to target user's friends list as "pending" (this is the notification)
+        val incomingRequest = Friend(
+            id = userId,
+            userId = targetId, // Target is the "owner" of this list entry
+            username = currentProfile.username,
+            displayName = currentProfile.displayName,
+            avatar = currentProfile.avatar,
+            status = "pending",
+            addedAt = System.currentTimeMillis(),
+            totalPoints = currentProfile.totalPoints,
+            currentStreak = 0,
+            totalCardsStudied = 0
+        )
+        remoteDatabase.child("users").child(targetId).child("friends").child(userId).setValue(incomingRequest).await()
+        
+        // 2. Add to my own friends list as "sent"
+        val outgoingRequest = Friend(
             id = targetId,
-            userId = userId,
+            userId = userId, // I am the "owner"
             username = targetProfile.username,
             displayName = targetProfile.displayName,
             avatar = targetProfile.avatar,
-            status = "accepted",
+            status = "sent",
             addedAt = System.currentTimeMillis(),
             totalPoints = targetProfile.totalPoints,
-            currentStreak = 0, // Simplified for now
+            currentStreak = 0,
             totalCardsStudied = 0
         )
-        remoteDatabase.child("users").child(userId).child("friends").child(targetId).setValue(friendEntry).await()
+        remoteDatabase.child("users").child(userId).child("friends").child(targetId).setValue(outgoingRequest).await()
         
-        // 2. Add to my local DB
-        appDatabase.friendDao().insertFriend(friendEntry)
+        // 3. Keep local DB in sync for me
+        appDatabase.friendDao().insertFriend(outgoingRequest)
+    }
+
+    suspend fun acceptFriendRequest(friend: Friend) {
+        val currentProfile = userProfile.firstOrNull() ?: UserProfile(id = userId)
+        
+        // 1. Update my entry for them to "accepted"
+        val acceptedFriendMe = friend.copy(status = "accepted")
+        remoteDatabase.child("users").child(userId).child("friends").child(friend.id).setValue(acceptedFriendMe).await()
+        appDatabase.friendDao().insertFriend(acceptedFriendMe)
+        
+        // 2. Update their entry for me to "accepted"
+        val acceptedFriendThem = Friend(
+            id = userId,
+            userId = friend.id,
+            username = currentProfile.username,
+            displayName = currentProfile.displayName,
+            avatar = currentProfile.avatar,
+            status = "accepted",
+            addedAt = System.currentTimeMillis(),
+            totalPoints = currentProfile.totalPoints,
+            currentStreak = 0,
+            totalCardsStudied = 0
+        )
+        remoteDatabase.child("users").child(friend.id).child("friends").child(userId).setValue(acceptedFriendThem).await()
+    }
+
+    suspend fun declineFriendRequest(friendId: String) {
+        // Remove from both lists
+        remoteDatabase.child("users").child(userId).child("friends").child(friendId).removeValue().await()
+        remoteDatabase.child("users").child(friendId).child("friends").child(userId).removeValue().await()
+        appDatabase.friendDao().deleteFriend(friendId)
     }
 
     fun getFriendsFlow(): Flow<List<Friend>> = callbackFlow {
+        if (!isUserLoggedIn()) {
+            trySend(emptyList())
+            return@callbackFlow
+        }
         val ref = remoteDatabase.child("users").child(userId).child("friends")
         val listener = object : com.google.firebase.database.ValueEventListener {
             override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {

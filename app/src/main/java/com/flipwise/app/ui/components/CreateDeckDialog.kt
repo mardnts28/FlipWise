@@ -28,7 +28,6 @@ fun CreateDeckDialog(
     onCreate: (name: String, subject: String, color: String, icon: String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
-    var subject by remember { mutableStateOf("") }
     val colors = listOf(
         "#7C3AED", "#F97316", "#10B981", "#EF4444",
         "#FBBF24", "#3B82F6", "#8B5CF6", "#F472B6"
@@ -53,24 +52,6 @@ fun CreateDeckDialog(
                     value = name,
                     onValueChange = { name = it },
                     placeholder = { Text("e.g., Spanish Vocabulary", color = Color.LightGray) },
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color(0xFFF9F9FB),
-                        unfocusedContainerColor = Color(0xFFF9F9FB),
-                        disabledContainerColor = Color(0xFFF9F9FB),
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    )
-                )
-
-                Spacer(Modifier.height(20.dp))
-
-                Text("Subject", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
-                Spacer(Modifier.height(8.dp))
-                TextField(
-                    value = subject,
-                    onValueChange = { subject = it },
-                    placeholder = { Text("e.g., Language Learning", color = Color.LightGray) },
                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color(0xFFF9F9FB),
@@ -145,11 +126,6 @@ fun CreateDeckDialog(
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF1E1B4B)
                                 )
-                                Text(
-                                    text = subject.ifBlank { "Subject" },
-                                    fontSize = 14.sp,
-                                    color = Color.Gray
-                                )
                             }
                         }
                     }
@@ -159,7 +135,7 @@ fun CreateDeckDialog(
 
                 // Action Button
                 Button(
-                    onClick = { onCreate(name, subject, selectedColor, defaultIcon) },
+                    onClick = { onCreate(name, "", selectedColor, defaultIcon) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),

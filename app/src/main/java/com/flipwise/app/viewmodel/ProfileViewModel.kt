@@ -18,6 +18,8 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     val friends: Flow<List<Friend>> = repository.getFriendsFlow()
 
+    val decks: Flow<List<Deck>> = repository.allDecks
+
     val challenges: Flow<List<Challenge>> = repository.getActiveChallenges()
     
     val recentSessions: Flow<List<StudySession>> = repository.sessions.map { it.take(5) }
@@ -125,7 +127,19 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     fun removeFriend(friendId: String) {
         viewModelScope.launch { 
-            com.flipwise.app.data.database.AppDatabase.getDatabase(getApplication()).friendDao().deleteFriend(friendId) 
+            repository.declineFriendRequest(friendId)
+        }
+    }
+
+    fun acceptFriendRequest(friend: Friend) {
+        viewModelScope.launch {
+            repository.acceptFriendRequest(friend)
+        }
+    }
+
+    fun declineFriendRequest(friendId: String) {
+        viewModelScope.launch {
+            repository.declineFriendRequest(friendId)
         }
     }
 

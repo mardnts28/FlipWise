@@ -12,7 +12,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
@@ -47,6 +55,7 @@ fun DeckDetailScreen(
 
     var showAddCardChoiceDialog by remember { mutableStateOf(false) }
     var showAddCardDialog by remember { mutableStateOf(false) }
+    var editingCard by remember { mutableStateOf<Flashcard?>(null) }
 
     val aiGenerationState by viewModel.aiGenerationState.collectAsState()
 
@@ -117,7 +126,7 @@ fun DeckDetailScreen(
                 .background(Color(0xFFFBFBFF))
         ) {
             if (cards.isEmpty()) {
-                EmptyCardsView(onAddClick = { showAddCardChoiceDialog = true })
+                EmptyCardsView()
             } else {
                 Spacer(Modifier.height(24.dp))
                 
@@ -142,7 +151,14 @@ fun DeckDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(cards, key = { it.id }) { card ->
-                        CardListItem(card = card, onDelete = { viewModel.deleteCard(card) })
+                        CardListItem(
+                            card = card, 
+                            onDelete = { viewModel.deleteCard(card) },
+                            onEdit = {
+                                editingCard = card
+                                showAddCardDialog = true
+                            }
+                        )
                     }
                 }
             }
@@ -153,6 +169,7 @@ fun DeckDetailScreen(
         AddFlashcardChoiceDialog(
             onDismiss = { showAddCardChoiceDialog = false },
             onManualCreateSelected = {
+                editingCard = null
                 showAddCardChoiceDialog = false
                 showAddCardDialog = true
             },
@@ -170,17 +187,26 @@ fun DeckDetailScreen(
 
     if (showAddCardDialog) {
         AddFlashcardDialog(
-            onDismiss = { showAddCardDialog = false },
-            onAdd = { front, back, options ->
-                viewModel.addFlashcard(deckId, front, back, options)
+            cardToEdit = editingCard,
+            onDismiss = { 
                 showAddCardDialog = false
+                editingCard = null
+            },
+            onAdd = { front, back, options ->
+                if (editingCard != null) {
+                    viewModel.updateFlashcard(editingCard!!.copy(front = front, back = back, options = options))
+                } else {
+                    viewModel.addFlashcard(deckId, front, back, options)
+                }
+                showAddCardDialog = false
+                editingCard = null
             }
         )
     }
 }
 
 @Composable
-fun CardListItem(card: Flashcard, onDelete: () -> Unit) {
+fun CardListItem(card: Flashcard, onDelete: () -> Unit, onEdit: () -> Unit) {
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = Color.White,
@@ -189,29 +215,45 @@ fun CardListItem(card: Flashcard, onDelete: () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Text("Front", fontSize = 12.sp, color = Color.Gray)
-                IconButton(onClick = onDelete, modifier = Modifier.size(20.dp)) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFFF8A8A), modifier = Modifier.size(18.dp))
+                Text("Question", fontSize = 12.sp, color = Color.Gray)
+                Row {
+                    IconButton(onClick = onEdit, modifier = Modifier.size(20.dp)) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.Gray, modifier = Modifier.size(18.dp))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    IconButton(onClick = onDelete, modifier = Modifier.size(20.dp)) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFFF8A8A), modifier = Modifier.size(18.dp))
+                    }
                 }
             }
             Text(card.front, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
             
             if (!card.options.isNullOrBlank()) {
                 Spacer(Modifier.height(12.dp))
-                Text("Choices", fontSize = 12.sp, color = Color.Gray)
+                Text("Options", fontSize = 12.sp, color = Color.Gray)
                 card.options.split("|").forEach { option ->
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
-                        Box(Modifier.size(6.dp).background(Color(0xFF7C3AED), CircleShape))
+                    val isCorrect = option == card.back
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+                        Box(
+                            Modifier.size(12.dp).background(
+                                if (isCorrect) Color(0xFF10B981) else Color.LightGray.copy(alpha = 0.5f), 
+                                CircleShape
+                            )
+                        )
                         Spacer(Modifier.width(8.dp))
-                        Text(option, fontSize = 14.sp, color = Color(0xFF1E1B4B))
+                        Text(
+                            option, 
+                            fontSize = 14.sp, 
+                            color = if (isCorrect) Color(0xFF10B981) else Color(0xFF1E1B4B),
+                            fontWeight = if (isCorrect) FontWeight.Bold else FontWeight.Normal
+                        )
                     }
                 }
+            } else {
+                Spacer(Modifier.height(16.dp))
+                Text("Answer", fontSize = 12.sp, color = Color.Gray)
+                Text(card.back, fontSize = 16.sp, color = Color(0xFF1E1B4B))
             }
-
-            Spacer(Modifier.height(16.dp))
-            
-            Text("Back", fontSize = 12.sp, color = Color.Gray)
-            Text(card.back, fontSize = 16.sp, color = Color(0xFF1E1B4B))
             
             Spacer(Modifier.height(16.dp))
             
@@ -225,7 +267,7 @@ fun CardListItem(card: Flashcard, onDelete: () -> Unit) {
 }
 
 @Composable
-fun EmptyCardsView(onAddClick: () -> Unit) {
+fun EmptyCardsView() {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -244,28 +286,36 @@ fun EmptyCardsView(onAddClick: () -> Unit) {
         Text("No flashcards yet", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
         Spacer(Modifier.height(8.dp))
         Text(
-            "Add your first flashcard to start studying",
+            "Tap the + button to add your first flashcard",
             fontSize = 16.sp,
             color = Color.Gray,
             textAlign = TextAlign.Center
         )
-        Spacer(Modifier.height(24.dp))
-        Button(
-            onClick = onAddClick,
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
-        ) {
-            Text("Add Flashcard", fontWeight = FontWeight.Bold)
-        }
     }
 }
 
 @Composable
-fun AddFlashcardDialog(onDismiss: () -> Unit, onAdd: (String, String, String?) -> Unit) {
-    var front by remember { mutableStateOf("") }
-    var back by remember { mutableStateOf("") }
-    val choices = remember { mutableStateListOf<String>() }
-    var currentChoice by remember { mutableStateOf("") }
+fun AddFlashcardDialog(
+    cardToEdit: Flashcard? = null,
+    onDismiss: () -> Unit,
+    onAdd: (String, String, String?) -> Unit
+) {
+    var front by remember { mutableStateOf(cardToEdit?.front ?: "") }
+    val options = remember { 
+        mutableStateListOf<String>().apply {
+            cardToEdit?.options?.split("|")?.let { addAll(it) } ?: cardToEdit?.back?.let { add(it) }
+        }
+    }
+    var currentOption by remember { mutableStateOf("") }
+    var correctIndex by remember { 
+        mutableIntStateOf(
+            if (cardToEdit != null) {
+                val opts = cardToEdit.options?.split("|") ?: listOf(cardToEdit.back)
+                val idx = opts.indexOf(cardToEdit.back)
+                if (idx != -1) idx else 0
+            } else 0
+        )
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -285,19 +335,24 @@ fun AddFlashcardDialog(onDismiss: () -> Unit, onAdd: (String, String, String?) -
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                         }
                         Spacer(Modifier.width(8.dp))
-                        Text("New Flashcard", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            if (cardToEdit != null) "Edit Flashcard" else "New Flashcard",
+                            color = Color.White, 
+                            fontSize = 20.sp, 
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
 
                 Column(
                     modifier = Modifier.padding(24.dp)
                 ) {
-                    Text("Front (Question)", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+                    Text("Question", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
                     Spacer(Modifier.height(8.dp))
                     TextField(
                         value = front,
                         onValueChange = { if (it.length <= 500) front = it },
-                        placeholder = { Text("What do you want to remember?", color = Color.LightGray) },
+                        placeholder = { Text("What question do you want to ask?", color = Color.LightGray) },
                         modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(16.dp)),
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color(0xFFF9F9FB),
@@ -309,31 +364,15 @@ fun AddFlashcardDialog(onDismiss: () -> Unit, onAdd: (String, String, String?) -
                     
                     Spacer(Modifier.height(24.dp))
 
-                    Text("Back (Correct Answer)", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
-                    Spacer(Modifier.height(8.dp))
-                    TextField(
-                        value = back,
-                        onValueChange = { if (it.length <= 500) back = it },
-                        placeholder = { Text("The correct answer", color = Color.LightGray) },
-                        modifier = Modifier.fillMaxWidth().height(80.dp).clip(RoundedCornerShape(16.dp)),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color(0xFFF9F9FB),
-                            unfocusedContainerColor = Color(0xFFF9F9FB),
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent
-                        )
-                    )
-
-                    Spacer(Modifier.height(24.dp))
-                    
-                    Text("Optional choices (Split study mode)", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+                    Text("Options / Answer", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+                    Text("Add one for a simple card, or multiple for multiple-choice.", fontSize = 12.sp, color = Color.Gray)
                     Spacer(Modifier.height(8.dp))
                     
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         TextField(
-                            value = currentChoice,
-                            onValueChange = { currentChoice = it },
-                            placeholder = { Text("Add incorrect option", color = Color.LightGray) },
+                            value = currentOption,
+                            onValueChange = { currentOption = it },
+                            placeholder = { Text("Add option", color = Color.LightGray) },
                             modifier = Modifier.weight(1f).height(56.dp).clip(RoundedCornerShape(16.dp)),
                             colors = TextFieldDefaults.colors(
                                 focusedContainerColor = Color(0xFFF9F9FB),
@@ -345,9 +384,9 @@ fun AddFlashcardDialog(onDismiss: () -> Unit, onAdd: (String, String, String?) -
                         Spacer(Modifier.width(8.dp))
                         IconButton(
                             onClick = { 
-                                if (currentChoice.isNotBlank()) {
-                                    choices.add(currentChoice)
-                                    currentChoice = ""
+                                if (currentOption.isNotBlank()) {
+                                    options.add(currentOption)
+                                    currentOption = ""
                                 }
                             },
                             modifier = Modifier.background(Color(0xFF7C3AED), CircleShape)
@@ -358,14 +397,37 @@ fun AddFlashcardDialog(onDismiss: () -> Unit, onAdd: (String, String, String?) -
                     
                     Spacer(Modifier.height(12.dp))
                     
-                    choices.forEachIndexed { index, choice ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).background(Color(0xFFF1F1F4), RoundedCornerShape(8.dp)).padding(8.dp)
+                    if (options.isNotEmpty()) {
+                        Text("Select the correct answer:", fontSize = 14.sp, color = Color.Gray, modifier = Modifier.padding(bottom = 8.dp))
+                    }
+                    
+                    options.forEachIndexed { index, option ->
+                        val isCorrect = index == correctIndex
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickable { correctIndex = index },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isCorrect) Color(0xFFE6F9F0) else Color(0xFFF9F9FB),
+                            border = BorderStroke(1.dp, if (isCorrect) Color(0xFF10B981) else Color(0xFFF1F1F4))
                         ) {
-                            Text(choice, modifier = Modifier.weight(1f), fontSize = 14.sp)
-                            IconButton(onClick = { choices.removeAt(index) }, modifier = Modifier.size(24.dp)) {
-                                Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.Gray)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(12.dp)
+                            ) {
+                                RadioButton(
+                                    selected = isCorrect,
+                                    onClick = { correctIndex = index },
+                                    colors = RadioButtonDefaults.colors(selectedColor = Color(0xFF10B981))
+                                )
+                                Text(option, modifier = Modifier.weight(1f), fontSize = 14.sp, color = Color(0xFF1E1B4B))
+                                IconButton(onClick = { 
+                                    options.removeAt(index)
+                                    if (correctIndex >= options.size) correctIndex = maxOf(0, options.size - 1)
+                                }, modifier = Modifier.size(24.dp)) {
+                                    Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.Gray)
+                                }
                             }
                         }
                     }
@@ -386,18 +448,19 @@ fun AddFlashcardDialog(onDismiss: () -> Unit, onAdd: (String, String, String?) -
                         }
                         Button(
                             onClick = { 
-                                val opts = if (choices.isNotEmpty()) (choices + back).shuffled().joinToString("|") else null
+                                val back = options[correctIndex]
+                                val opts = if (options.size > 1) options.joinToString("|") else null
                                 onAdd(front, back, opts) 
                             },
                             modifier = Modifier.weight(1f).height(56.dp),
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6D28D9)),
-                            enabled = front.isNotBlank() && back.isNotBlank()
+                            enabled = front.isNotBlank() && options.isNotEmpty()
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(8.dp))
-                                Text("Save", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                Text(if (cardToEdit != null) "Update" else "Save Card", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

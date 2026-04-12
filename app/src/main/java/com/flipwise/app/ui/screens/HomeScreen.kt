@@ -31,11 +31,26 @@ fun HomeScreen(
     onNavigateToStudy: (String?) -> Unit,
     onNavigateToDecks: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    viewModel: DeckViewModel = viewModel()
+    onNavigateToProfile: () -> Unit,
+    viewModel: DeckViewModel = viewModel(),
+    profileViewModel: com.flipwise.app.viewmodel.ProfileViewModel = viewModel()
 ) {
     val decks by viewModel.decks.collectAsState(initial = emptyList())
     val progress by viewModel.userProgress.collectAsState()
+    val friends by profileViewModel.friends.collectAsState(initial = emptyList())
+    
     var showCreateDialog by remember { mutableStateOf(false) }
+    var showFriendNotification by remember { mutableStateOf(false) }
+    
+    val pendingRequests = remember(friends) {
+        friends.filter { it.status == "pending" }
+    }
+
+    LaunchedEffect(pendingRequests) {
+        if (pendingRequests.isNotEmpty()) {
+            showFriendNotification = true
+        }
+    }
 
     val recentDecks = remember(decks) {
         decks.sortedByDescending { it.lastStudied ?: 0L }.take(4)
@@ -234,10 +249,39 @@ fun HomeScreen(
         Spacer(Modifier.height(32.dp))
     }
 
+    if (showFriendNotification && pendingRequests.isNotEmpty()) {
+        val firstRequest = pendingRequests.first()
+        AlertDialog(
+            onDismissRequest = { showFriendNotification = false },
+            title = { Text("New Friend Request! \uD83D\uDC4B") },
+            text = { 
+                Text("${firstRequest.displayName} (@${firstRequest.username}) wants to be friends on FlipWise!")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showFriendNotification = false
+                        onNavigateToProfile()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
+                ) {
+                    Text("View Profile")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showFriendNotification = false }) {
+                    Text("Later", color = Color.Gray)
+                }
+            },
+            shape = RoundedCornerShape(28.dp),
+            containerColor = Color.White
+        )
+    }
+
     if (showCreateDialog) {
         com.flipwise.app.ui.components.CreateDeckDialog(
             onDismiss = { showCreateDialog = false },
-            onDeckCreate = { name: String, subject: String, color: String, icon: String ->
+            onCreate = { name, subject, color, icon ->
                 viewModel.createDeck(name, subject, color, icon)
                 showCreateDialog = false
             }

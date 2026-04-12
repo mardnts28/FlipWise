@@ -209,6 +209,12 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun updateFlashcard(card: Flashcard) {
+        viewModelScope.launch {
+            repository.updateFlashcard(card)
+        }
+    }
+
     fun deleteCard(card: Flashcard) {
         viewModelScope.launch {
             repository.deleteFlashcard(card)
@@ -339,35 +345,13 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
 
                     cardsResult.fold(
                         onSuccess = { generatedCards ->
-                            // Save all generated cards to the deck
-                            var savedCount = 0
-                            for (card in generatedCards) {
-                                try {
-                                    repository.addFlashcard(
-                                        Flashcard(
-                                            id = UUID.randomUUID().toString(),
-                                            deckId = deckId,
-                                            front = card.front,
-                                            back = card.back,
-                                            options = card.options?.joinToString("|")
-                                        )
-                                    )
-                                    savedCount++
-                                } catch (e: Exception) {
-                                    // Continue saving other cards even if one fails
-                                }
-                            }
-
-                            // Update deck card count
-                            val count = cardDao.getCardCountForDeck(deckId)
-                            deckDao.getDeckById(deckId)?.let { deck ->
-                                repository.updateDeck(deck.copy(cardCount = count))
-                            }
-
-                            _aiGenerationState.value = AiGenerationState.Success(savedCount)
+                            saveGeneratedCards(deckId, generatedCards)
                         },
                         onFailure = { error ->
-                            _aiGenerationState.value = AiGenerationState.Error(error.message ?: "Failed to generate flashcards")
+                            _aiGenerationState.value = AiGenerationState.Loading("AI failed. Using fallback extraction...")
+                            // Fallback logic
+                            val fallbackCards = generateFallbackCards(text)
+                            saveGeneratedCards(deckId, fallbackCards)
                         }
                     )
                 },
@@ -376,6 +360,75 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
                 }
             )
         }
+    }
+
+    private fun generateFallbackCards(text: String): List<GeminiFlashcardGenerator.GeneratedFlashcard> {
+        val cards = mutableListOf<GeminiFlashcardGenerator.GeneratedFlashcard>()
+        val lines = text.split("\n").filter { it.isNotBlank() }
+        
+        // Simple fallback: Try to find "Question: Answer" patterns or just use adjacent lines
+        var i = 0
+        while (i < lines.size - 1 && cards.size < 20) {
+            val line = lines[i].trim()
+            if (line.contains("?") || line.length > 20) {
+                // If it looks like a question or a long sentence
+                val question = line
+                val answer = lines[i+1].trim()
+                
+                // Occasionally create multiple choice if we have enough lines
+                if (i + 4 < lines.size && i % 3 == 0) {
+                    val wrongOptions = listOf(lines[i+2].trim(), lines[i+3].trim(), lines[i+4].trim())
+                    cards.add(GeminiFlashcardGenerator.GeneratedFlashcard(
+                        front = question,
+                        back = answer,
+                        options = (wrongOptions + answer).shuffled()
+                    ))
+                    i += 5
+                } else {
+                    cards.add(GeminiFlashcardGenerator.GeneratedFlashcard(
+                        front = question,
+                        back = answer,
+                        options = null
+                    ))
+                    i += 2
+                }
+            } else {
+                i++
+            }
+        }
+        
+        // If still empty, just take any lines
+        if (cards.isEmpty() && lines.size >= 2) {
+            cards.add(GeminiFlashcardGenerator.GeneratedFlashcard(front = lines[0], back = lines[1], options = null))
+        }
+        
+        return cards
+    }
+
+    private suspend fun saveGeneratedCards(deckId: String, generatedCards: List<GeminiFlashcardGenerator.GeneratedFlashcard>) {
+        var savedCount = 0
+        for (card in generatedCards) {
+            try {
+                repository.addFlashcard(
+                    Flashcard(
+                        id = UUID.randomUUID().toString(),
+                        deckId = deckId,
+                        front = card.front,
+                        back = card.back,
+                        options = card.options?.joinToString("|")
+                    )
+                )
+                savedCount++
+            } catch (e: Exception) {}
+        }
+
+        // Update deck card count
+        val count = cardDao.getCardCountForDeck(deckId)
+        deckDao.getDeckById(deckId)?.let { deck ->
+            repository.updateDeck(deck.copy(cardCount = count))
+        }
+
+        _aiGenerationState.value = AiGenerationState.Success(savedCount)
     }
 
     fun resetAiGenerationState() {

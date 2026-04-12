@@ -9,9 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.ExitToApp
 import androidx.compose.material.icons.automirrored.rounded.Logout
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
@@ -22,12 +20,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flipwise.app.ui.theme.*
 import com.flipwise.app.viewmodel.DeckViewModel
 import com.flipwise.app.viewmodel.ProfileViewModel
 import kotlinx.coroutines.launch
-
+import androidx.compose.material.icons.rounded.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +44,7 @@ fun SettingsScreen(
     var deleteConfirmText by remember { mutableStateOf("") }
     val profile by profileViewModel.userProfile.collectAsState()
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
@@ -120,11 +120,7 @@ fun SettingsScreen(
                         checked = notificationsOn,
                         onCheckedChange = { 
                             notificationsOn = it 
-                            if (it) {
-                                com.flipwise.app.data.worker.StudyReminderWorker.schedule(androidx.compose.ui.platform.LocalContext.current)
-                            } else {
-                                com.flipwise.app.data.worker.StudyReminderWorker.cancel(androidx.compose.ui.platform.LocalContext.current)
-                            }
+                            // Notifications worker scheduling removed for stability
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
@@ -190,7 +186,7 @@ fun SettingsScreen(
                 HorizontalDivider(color = GhostWhite, thickness = 1.dp)
 
                 DangerActionRow(
-                    icon = Icons.AutoMirrored.Rounded.ExitToApp,
+                    icon = Icons.AutoMirrored.Rounded.Logout,
                     title = "Reset Onboarding",
                     description = "See the welcome tutorial again",
                     onClick = { 

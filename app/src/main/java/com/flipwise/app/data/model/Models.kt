@@ -111,7 +111,8 @@ data class Challenge(
     val endDate: Long,
     val status: String,
     val createdBy: String,
-    val participants: String
+    val participants: String,
+    val deckId: String? = null
 ) : Parcelable
 
 sealed class AiGenerationState {

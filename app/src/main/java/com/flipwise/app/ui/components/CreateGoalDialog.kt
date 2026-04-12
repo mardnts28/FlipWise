@@ -57,6 +57,7 @@ fun CreateGoalDialog(onDismiss: () -> Unit, onCreate: (Challenge) -> Unit) {
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color(0xFFF9F9FB),
                         unfocusedContainerColor = Color(0xFFF9F9FB),
+                        disabledContainerColor = Color(0xFFF9F9FB),
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
                     )
@@ -68,7 +69,7 @@ fun CreateGoalDialog(onDismiss: () -> Unit, onCreate: (Challenge) -> Unit) {
                     Column(modifier = Modifier.weight(3f)) {
                         Text("Goal Type", fontWeight = FontWeight.Bold, color = NavyInk, fontSize = 14.sp)
                         Spacer(Modifier.height(8.dp))
-                        // Simplified selection for now
+                        
                         val types = listOf("Cards Studied", "Points Earned", "Streak Days")
                         var expanded by remember { mutableStateOf(false) }
                         
@@ -100,6 +101,7 @@ fun CreateGoalDialog(onDismiss: () -> Unit, onCreate: (Challenge) -> Unit) {
                             colors = TextFieldDefaults.colors(
                                 focusedContainerColor = Color(0xFFF9F9FB),
                                 unfocusedContainerColor = Color(0xFFF9F9FB),
+                                disabledContainerColor = Color(0xFFF9F9FB),
                                 focusedIndicatorColor = Color.Transparent,
                                 unfocusedIndicatorColor = Color.Transparent
                             )
@@ -118,6 +120,7 @@ fun CreateGoalDialog(onDismiss: () -> Unit, onCreate: (Challenge) -> Unit) {
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color(0xFFF9F9FB),
                         unfocusedContainerColor = Color(0xFFF9F9FB),
+                        disabledContainerColor = Color(0xFFF9F9FB),
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
                     )
@@ -137,13 +140,13 @@ fun CreateGoalDialog(onDismiss: () -> Unit, onCreate: (Challenge) -> Unit) {
                             startDate = System.currentTimeMillis(),
                             endDate = System.currentTimeMillis() + (duration.toLongOrNull() ?: 7) * 86400000,
                             status = "active",
-                            createdBy = "local_user", // This will be updated in repository with real UID
+                            createdBy = "local_user",
                             participants = "local_user"
                         ))
                     },
                     modifier = Modifier.fillMaxWidth().height(60.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = GrapePop)
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)) // Fixed GrapePop color
                 ) {
                     Text("Start Journey", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 }

@@ -149,7 +149,8 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                     }
                 },
                 onNavigateToDecks = { navController.navigate(Screen.DeckList.route) },
-                onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                onNavigateToProfile = { navController.navigate(Screen.Profile.route) }
             )
         }
 
