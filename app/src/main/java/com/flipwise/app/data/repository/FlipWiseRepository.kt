@@ -327,12 +327,14 @@ class FlipWiseRepository(context: Context) {
         return try {
             val snapshot = remoteDatabase.child("leaderboard")
                 .orderByChild("username")
-                .equalTo(username.trim())
+                .equalTo(username.trim().lowercase())
                 .get()
                 .await()
-            
-            // Check if any user other than the current one has this username
-            snapshot.children.any { it.key != userId }
+
+            snapshot.children.any { child ->
+                val childUsername = child.child("username").getValue(String::class.java)
+                childUsername?.lowercase() == username.trim().lowercase() && child.key != userId
+            }
         } catch (e: Exception) {
             false
         }

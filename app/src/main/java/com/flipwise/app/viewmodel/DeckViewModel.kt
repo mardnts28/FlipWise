@@ -514,18 +514,19 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
             // Save locally to Room
             auditLogDao.log(AuditLog(userId = uid, action = action, details = details))
 
-            // Save to Firebase Firestore (cloud)
+            // Save to Realtime Database instead of Firestore
             try {
-                com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                    .collection("audit_logs")
-                    .add(mapOf(
+                com.google.firebase.database.FirebaseDatabase.getInstance()
+                    .getReference("audit_logs")
+                    .push()
+                    .setValue(mapOf(
                         "userId" to uid,
                         "action" to action,
                         "details" to details,
                         "timestamp" to System.currentTimeMillis()
                     ))
             } catch (e: Exception) {
-                android.util.Log.e("AUDIT_LOG", "Failed to save to Firestore: ${e.message}")
+                android.util.Log.e("AUDIT_LOG", "Failed to save to Firebase: ${e.message}")
             }
 
             android.util.Log.d("AUDIT_LOG", "✅ Logged: $action | $details")
