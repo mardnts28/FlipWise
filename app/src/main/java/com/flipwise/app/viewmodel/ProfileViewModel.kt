@@ -28,20 +28,19 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 )
             )
 
-            // Save to Firebase Firestore (cloud)
+            // Save to Realtime Database instead of Firestore
             try {
-                com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                    .collection("audit_logs")
-                    .add(
-                        mapOf(
-                            "userId" to uid,
-                            "action" to action,
-                            "details" to details,
-                            "timestamp" to System.currentTimeMillis()
-                        )
-                    )
+                com.google.firebase.database.FirebaseDatabase.getInstance()
+                    .getReference("audit_logs")
+                    .push()
+                    .setValue(mapOf(
+                        "userId" to uid,
+                        "action" to action,
+                        "details" to details,
+                        "timestamp" to System.currentTimeMillis()
+                    ))
             } catch (e: Exception) {
-                android.util.Log.e("AUDIT_LOG", "Failed to save to Firestore: ${e.message}")
+                android.util.Log.e("AUDIT_LOG", "Failed to save to Firebase: ${e.message}")
             }
 
             android.util.Log.d("AUDIT_LOG", "✅ Logged: $action | $details")
