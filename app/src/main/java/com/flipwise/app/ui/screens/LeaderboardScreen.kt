@@ -42,8 +42,12 @@ fun LeaderboardScreen(
     val leaderboard by viewModel.leaderboard.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
     val decks by viewModel.decks.collectAsState(initial = emptyList())
+    val friends by viewModel.friends.collectAsState(initial = emptyList())
+    val challenges by viewModel.challenges.collectAsState(initial = emptyList())
+    val allSessions by viewModel.allSessions.collectAsState(initial = emptyList())
     
     var showGoalDialog by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableIntStateOf(0) } // 0: Global, 1: Friends, 2: Goals
     val scope = rememberCoroutineScope()
 
     if (showGoalDialog) {
@@ -131,9 +135,119 @@ fun LeaderboardScreen(
                 }
             }
 
-            // Ranking List
+            // Tabs
+            Surface(
+                modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                color = Color.White,
+                shadowElevation = 1.dp
+            ) {
+                Row(modifier = Modifier.padding(4.dp)) {
+                    com.flipwise.app.ui.screens.TabButton(
+                        text = "Global",
+                        icon = Icons.Rounded.Public,
+                        isSelected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        modifier = Modifier.weight(1f)
+                    )
+                    com.flipwise.app.ui.screens.TabButton(
+                        text = "Friends",
+                        icon = Icons.Rounded.People,
+                        isSelected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        modifier = Modifier.weight(1f)
+                    )
+                    com.flipwise.app.ui.screens.TabButton(
+                        text = "Goals",
+                        icon = Icons.Rounded.Flag,
+                        isSelected = selectedTab == 2,
+                        onClick = { selectedTab = 2 },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            // Tab Content
             Box(modifier = Modifier.fillMaxSize()) {
-                RankingList(leaderboard, userProfile)
+                when (selectedTab) {
+                    0 -> RankingList(leaderboard, userProfile)
+                    1 -> {
+                        val friendUids = friends.filter { it.status == "accepted" }.map { it.id } + userProfile.id
+                        val friendLeaderboard = leaderboard.filter { friendUids.contains(it.id) }.sortedByDescending { it.totalPoints }
+                        if (friendLeaderboard.size <= 1) {
+                            com.flipwise.app.ui.screens.EmptyStateView(
+                                icon = Icons.Rounded.GroupAdd,
+                                title = "No friends yet",
+                                description = "Add friends to compete against them in the leaderboard!"
+                            )
+                        } else {
+                            RankingList(friendLeaderboard, userProfile)
+                        }
+                    }
+                    2 -> {
+                        val personalGoals = challenges.filter { it.type == "personal" }
+                        if (personalGoals.isEmpty()) {
+                            com.flipwise.app.ui.screens.EmptyStateView(
+                                icon = Icons.Rounded.Flag,
+                                title = "No active goals",
+                                description = "Set a personal goal to track your study progress!"
+                            )
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(top = 8.dp, bottom = 100.dp, start = 20.dp, end = 20.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(personalGoals.size) { index ->
+                                    val goal = personalGoals[index]
+                                    
+                                    val currentProgress = when(goal.goalType) {
+                                        "Cards Studied" -> allSessions.filter { it.date >= goal.startDate }.sumOf { it.cardsStudied }
+                                        "Points Earned" -> allSessions.filter { it.date >= goal.startDate }.sumOf { it.pointsEarned }
+                                        "Streak Days" -> userProfile.currentStreak // Can't easily bound this, so current streak works
+                                        else -> 0
+                                    }
+                                    
+                                    val percentage = (currentProgress.toFloat() / goal.goal.toFloat()).coerceIn(0f, 1f)
+
+                                    Surface(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(24.dp),
+                                        color = Color.White
+                                    ) {
+                                        Column(modifier = Modifier.padding(16.dp)) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Rounded.Flag, contentDescription = null, tint = GrapePop)
+                                                Spacer(Modifier.width(8.dp))
+                                                Text(goal.name, fontWeight = FontWeight.Bold, color = com.flipwise.app.ui.theme.NavyInk, fontSize = 16.sp)
+                                                Spacer(Modifier.weight(1f))
+                                                Text(
+                                                    "${((goal.endDate - System.currentTimeMillis()) / 86400000).coerceAtLeast(0)}d left",
+                                                    color = Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.SemiBold
+                                                )
+                                            }
+                                            Spacer(Modifier.height(12.dp))
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                                Text(
+                                                    "Target: ${goal.goal} ${goal.goalType}",
+                                                    color = Color.Gray, fontSize = 14.sp
+                                                )
+                                                Text("$currentProgress / ${goal.goal}", color = GrapePop, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                            }
+                                            Spacer(Modifier.height(8.dp))
+                                            LinearProgressIndicator(
+                                                progress = { percentage },
+                                                modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
+                                                color = if (percentage >= 1f) Color(0xFF10B981) else GrapePop,
+                                                trackColor = Color.LightGray.copy(alpha = 0.3f)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }

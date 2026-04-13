@@ -12,6 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.MilitaryTech
 import androidx.compose.material.icons.filled.TrackChanges
@@ -415,7 +416,9 @@ fun MonthlyActivityCalendar(
     achievements: List<com.flipwise.app.data.model.Achievement>,
     onDayClick: (Long, List<com.flipwise.app.data.model.Achievement>) -> Unit
 ) {
+    var monthOffset by remember { mutableIntStateOf(0) }
     val calendar = Calendar.getInstance()
+    calendar.add(Calendar.MONTH, monthOffset)
     val currentMonth = calendar.get(Calendar.MONTH)
     val currentYear = calendar.get(Calendar.YEAR)
     
@@ -437,7 +440,15 @@ fun MonthlyActivityCalendar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(monthName, fontWeight = FontWeight.Bold, color = NavyInk, fontSize = 14.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { monthOffset-- }, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Previous", modifier = Modifier.size(16.dp))
+                }
+                Text(monthName, fontWeight = FontWeight.Bold, color = NavyInk, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 8.dp))
+                IconButton(onClick = { monthOffset++ }, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next", modifier = Modifier.size(16.dp))
+                }
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(8.dp).background(Color(0xFF10B981), CircleShape))
                 Spacer(Modifier.width(4.dp))

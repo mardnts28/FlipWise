@@ -23,6 +23,8 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     val challenges: Flow<List<Challenge>> = repository.getActiveChallenges()
     
     val recentSessions: Flow<List<StudySession>> = repository.sessions.map { it.take(5) }
+    
+    val allSessions: Flow<List<StudySession>> = repository.sessions
 
     val leaderboard: StateFlow<List<UserProfile>> = repository.getLeaderboardFlow()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -69,7 +71,9 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     }
 
     suspend fun signIn(email: String, password: String): Result<Unit> {
-        return repository.signIn(email, password)
+        return repository.signIn(email, password).also {
+            if (it.isSuccess) repository.fullSync()
+        }
     }
 
     suspend fun signUp(email: String, password: String): Result<Unit> {
@@ -77,7 +81,9 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     }
 
     suspend fun signInWithGoogle(idToken: String): Result<Unit> {
-        return repository.signInWithGoogle(idToken)
+        return repository.signInWithGoogle(idToken).also {
+            if (it.isSuccess) repository.fullSync()
+        }
     }
 
     suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
@@ -90,6 +96,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     suspend fun loginOrRegister(name: String, email: String): Result<Unit> {
         return try {
+            repository.fullSync()
             val current = repository.syncProfile() ?: userProfile.value
             val finalDisplayName = if (name.isNotBlank()) name else email.substringBefore("@")
             

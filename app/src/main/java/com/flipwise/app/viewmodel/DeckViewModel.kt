@@ -104,6 +104,11 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
                 list.add(Achievement("points_100", "Advanced Points", "Earn points from 100 cards", "🥈", "Points", tier = "silver"))
                 list.add(Achievement("points_500", "Legendary Points", "Earn points from 500 cards", "🥇", "Points", tier = "gold"))
 
+                // Sessions
+                list.add(Achievement("study_1", "First Study Session", "Complete your first study session", "🔰", "Milestones", tier = "bronze"))
+                list.add(Achievement("study_10", "Dedicated Student", "Complete 10 study sessions", "🌟", "Milestones", tier = "silver"))
+                list.add(Achievement("study_50", "Study Machine", "Complete 50 study sessions", "🔥", "Milestones", tier = "gold"))
+
                 achievementDao.insertAchievements(list)
             }
         }
@@ -158,6 +163,12 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
         if (progress.totalCardsStudied >= 150) unlock("points_150")
         if (progress.totalCardsStudied >= 250) unlock("points_250")
         if (progress.totalCardsStudied >= 500) unlock("points_500")
+
+        // Sessions
+        val totalSessions = sessionDao.getAllSessionsOnce().size
+        if (totalSessions >= 1) unlock("study_1")
+        if (totalSessions >= 10) unlock("study_10")
+        if (totalSessions >= 50) unlock("study_50")
     }
 
     // ─── Progress ────────────────────────────────────────────────
