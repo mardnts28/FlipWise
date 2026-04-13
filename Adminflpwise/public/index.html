@@ -1,0 +1,768 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.gstatic.com https://www.googleapis.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src https://*.firebaseio.com https://*.googleapis.com https://*.firestore.googleapis.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; img-src 'self' data:; frame-ancestors 'none';" />  <meta http-equiv="X-Frame-Options" content="DENY" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>FlipWise Admin Terminal</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:ital,wght@0,300;0,500;0,700;1,400&display=swap" rel="stylesheet" />
+
+  <!-- Firebase SDKs (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    /* ── Typography ────────────────────────────────────────────── */
+    :root {
+      --grape:      #6D28D9;
+      --grape-light:#8B5CF6;
+      --ink:        #1C1B3A;
+      --ink-light:  #2E2D52;
+      --surface:    #F5F4FC;
+      --card:       #FFFFFF;
+      --border:     #E5E2F5;
+      --text-muted: #8583A3;
+      --success:    #10B981;
+      --danger:     #EF4444;
+      --warning:    #F59E0B;
+      --info:       #3B82F6;
+      --sidebar-w:  260px;
+      --font-mono:  'Space Mono', monospace;
+      --font-body:  'DM Sans', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: var(--font-body);
+      background: var(--surface);
+      color: var(--ink);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Scrollbar ─────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+    /* ── Sidebar ───────────────────────────────────────────────── */
+    #sidebar {
+      position: fixed; top: 0; left: 0;
+      width: var(--sidebar-w);
+      max-width: 100%;
+      height: 100vh;
+      background: var(--ink);
+      display: flex; flex-direction: column;
+      padding: 1.5rem 1rem;
+      z-index: 900;
+      transition: transform .3s ease;
+    }
+    .sidebar-brand-row {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: .5rem; padding: .5rem .75rem 1.25rem;
+    }
+    .sidebar-brand {
+      display: flex; align-items: center; gap: .6rem;
+      min-width: 0; flex: 1;
+    }
+    .sidebar-collapse-toggle {
+      display: none;
+      flex-shrink: 0; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border-radius: 10px; border: none;
+      background: rgba(255,255,255,.08); color: #9CA3AF;
+      cursor: pointer; transition: background .15s, color .15s;
+    }
+    .sidebar-collapse-toggle:hover {
+      background: rgba(255,255,255,.14); color: #fff;
+    }
+    @media (min-width: 992px) {
+      .sidebar-collapse-toggle { display: flex; }
+      #app.sidebar-collapsed { --sidebar-w: 76px; }
+      #app.sidebar-collapsed #sidebar {
+        padding-left: .55rem; padding-right: .55rem;
+      }
+      #app.sidebar-collapsed #sidebar .sidebar-brand-text,
+      #app.sidebar-collapsed #sidebar .nav-section-label,
+      #app.sidebar-collapsed #sidebar .nav-label,
+      #app.sidebar-collapsed #sidebar .sidebar-footer.mb-2 {
+        display: none !important;
+      }
+      #app.sidebar-collapsed #sidebar .sidebar-brand-row {
+        flex-direction: column; align-items: center;
+        padding-left: .25rem; padding-right: .25rem;
+      }
+      #app.sidebar-collapsed #sidebar .sidebar-brand {
+        flex-direction: column; align-items: center;
+        width: 100%; justify-content: center;
+      }
+      #app.sidebar-collapsed #sidebar .nav-link-item {
+        justify-content: center; gap: 0;
+        padding: .65rem .35rem;
+      }
+      #app.sidebar-collapsed #sidebar .nav-link-item i { margin: 0 !important; }
+    }
+    .brand-badge {
+      width: 36px; height: 36px;
+      background: var(--grape);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: #fff;
+      font-size: .75rem;
+      letter-spacing: 0;
+      flex-shrink: 0;
+    }
+    .brand-title { color: #fff; font-weight: 700; font-size: 1rem; line-height: 1.1; }
+    .brand-sub   { color: var(--text-muted); font-size: .6rem; text-transform: uppercase; letter-spacing: .12em; }
+
+    .nav-section-label {
+      color: var(--text-muted);
+      font-size: .6rem;
+      text-transform: uppercase;
+      letter-spacing: .15em;
+      font-weight: 700;
+      padding: .75rem .75rem .25rem;
+    }
+    .nav-link-item {
+      display: flex; align-items: center; gap: .75rem;
+      padding: .7rem .75rem;
+      border-radius: 10px;
+      color: #9CA3AF;
+      text-decoration: none;
+      font-size: .85rem;
+      font-weight: 500;
+      transition: all .15s;
+      cursor: pointer;
+      border: none; background: none; width: 100%; text-align: left;
+    }
+    .nav-link-item:hover { color: #fff; background: rgba(255,255,255,.06); }
+    .nav-link-item.active { color: #fff; background: var(--grape); box-shadow: 0 4px 14px rgba(109,40,217,.4); }
+    .nav-link-item i { font-size: 1rem; width: 1.1rem; text-align: center; }
+    #sidebar-nav {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+    .sidebar-footer {
+      padding: .75rem;
+      background: rgba(255,255,255,.05);
+      border-radius: 10px;
+    }
+    .sidebar-user-email {
+      color: #fff; font-size: .8rem; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sidebar-user-role { color: var(--text-muted); font-size: .7rem; }
+
+    /* ── Main Content ──────────────────────────────────────────── */
+    #main-content {
+      margin-left: var(--sidebar-w);
+      min-height: 100vh;
+      padding: 2rem 2.5rem;
+      transition: margin-left .3s;
+    }
+    @media (max-width: 991px) {
+      #sidebar { width: 260px; transform: translateX(-100%); }
+      #sidebar.open { transform: translateX(0); }
+      #main-content { margin-left: 0; }
+    }
+
+    /* ── Page title ────────────────────────────────────────────── */
+    .page-header h2 {
+      font-size: 1.75rem; font-weight: 700;
+      color: var(--ink); margin: 0;
+    }
+    .page-header p { color: var(--text-muted); font-size: .875rem; margin: .25rem 0 0; }
+
+    /* ── Cards ─────────────────────────────────────────────────── */
+    .fw-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 4px rgba(28,27,58,.05);
+    }
+
+    /* ── Stat Cards ─────────────────────────────────────────────── */
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem 1.5rem;
+      position: relative; overflow: hidden;
+      transition: box-shadow .2s;
+    }
+    .stat-card:hover { box-shadow: 0 4px 16px rgba(28,27,58,.09); }
+    .stat-label {
+      font-size: .65rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .1em;
+      color: var(--text-muted);
+    }
+    .stat-value { font-size: 2rem; font-weight: 700; margin: .25rem 0; line-height: 1; }
+    .stat-sub   { font-size: .72rem; color: var(--text-muted); }
+    .stat-trend {
+      font-size: .65rem; font-weight: 700;
+      position: absolute; top: 1rem; right: 1rem;
+    }
+    .stat-badge {
+      position: absolute; top: 1rem; right: 1rem;
+      background: #FFF3CD; color: #92400E;
+      font-size: .6rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: .08em;
+      padding: .2rem .5rem; border-radius: 6px;
+    }
+
+    /* ── Tables ─────────────────────────────────────────────────── */
+    .fw-table {
+      width: 100%; border-collapse: collapse; font-size: .875rem;
+    }
+    .fw-table thead th {
+      font-size: .65rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--text-muted);
+      background: var(--surface); padding: .75rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .fw-table tbody td { padding: .85rem 1rem; border-bottom: 1px solid #F3F1FC; }
+    .fw-table tbody tr:last-child td { border-bottom: none; }
+    .fw-table tbody tr:hover td { background: var(--surface); }
+
+    /* ── Badges ──────────────────────────────────────────────────── */
+    .badge-active   { background:#D1FAE5; color:#065F46; }
+    .badge-suspended{ background:#FEF3C7; color:#92400E; }
+    .badge-banned   { background:#FEE2E2; color:#991B1B; }
+    .badge-verified { background:#D1FAE5; color:#065F46; }
+    .badge-pending  { background:#FEF3C7; color:#92400E; }
+    .badge-ai       { background:#EDE9FE; color:#5B21B6; }
+    .badge-user     { background:#DBEAFE; color:#1E40AF; }
+    .fw-badge {
+      display: inline-block; padding: .2rem .55rem;
+      font-size: .68rem; font-weight: 700;
+      border-radius: 6px; text-transform: capitalize;
+    }
+
+    /* ── Buttons ──────────────────────────────────────────────────── */
+    .btn-grape {
+      background: var(--grape); color: #fff;
+      border: none; border-radius: 10px;
+      font-weight: 600; font-family: var(--font-body);
+      transition: filter .15s;
+    }
+    .btn-grape:hover { filter: brightness(1.12); color: #fff; }
+    .btn-grape:disabled { opacity: .55; cursor: not-allowed; }
+    .btn-ghost {
+      background: var(--surface); color: var(--ink);
+      border: 1px solid var(--border); border-radius: 10px;
+      font-weight: 600; font-family: var(--font-body);
+      transition: background .15s;
+    }
+    .btn-ghost:hover { background: #ede9fe; color: var(--grape); }
+    .text-grape { color: var(--grape) !important; }
+
+    /* ── Filter pills ───────────────────────────────────────────── */
+    .filter-pill {
+      padding: .35rem 1rem; border-radius: 20px;
+      font-size: .75rem; font-weight: 700;
+      border: 1px solid var(--border);
+      background: var(--card); color: var(--text-muted);
+      cursor: pointer; transition: all .15s;
+    }
+    .filter-pill.active, .filter-pill:hover {
+      background: var(--grape); color: #fff; border-color: var(--grape);
+    }
+
+    /* ── Tabs ───────────────────────────────────────────────────── */
+    .fw-tabs { border-bottom: 2px solid var(--border); }
+    .fw-tab {
+      background: none; border: none;
+      padding: .75rem 0; margin-right: 2rem;
+      font-size: .875rem; font-weight: 700;
+      color: var(--text-muted); cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px; transition: all .15s;
+    }
+    .fw-tab.active { color: var(--grape); border-bottom-color: var(--grape); }
+
+    /* ── Inputs ─────────────────────────────────────────────────── */
+    .fw-input {
+      width: 100%; padding: .75rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px; font-family: var(--font-body);
+      font-size: .9rem; color: var(--ink);
+      outline: none; transition: border-color .15s, box-shadow .15s;
+    }
+    .fw-input:focus {
+      border-color: var(--grape);
+      box-shadow: 0 0 0 3px rgba(109,40,217,.12);
+    }
+    .fw-label {
+      font-size: .65rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: .1em;
+      color: var(--text-muted); display: block; margin-bottom: .35rem;
+    }
+    .fw-select {
+      width: 100%; padding: .75rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px; font-family: var(--font-body);
+      font-size: .9rem; color: var(--ink);
+      outline: none; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath fill='%238583A3' d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 1rem center;
+      padding-right: 2.5rem;
+      cursor: pointer;
+    }
+    textarea.fw-input { resize: vertical; min-height: 100px; }
+
+    /* ── Toggle Switch ──────────────────────────────────────────── */
+    .fw-toggle-wrap { display: flex; align-items: center; gap: .5rem; }
+    .fw-toggle {
+      position: relative; display: inline-block;
+      width: 44px; height: 24px; cursor: pointer;
+    }
+    .fw-toggle input { display: none; }
+    .fw-toggle-slider {
+      position: absolute; inset: 0;
+      background: #D1D5DB; border-radius: 99px;
+      transition: background .2s;
+    }
+    .fw-toggle-slider::after {
+      content: ''; position: absolute;
+      width: 18px; height: 18px;
+      background: #fff; border-radius: 50%;
+      top: 3px; left: 3px;
+      transition: transform .2s;
+      box-shadow: 0 1px 4px rgba(0,0,0,.2);
+    }
+    .fw-toggle input:checked + .fw-toggle-slider { background: var(--success); }
+    .fw-toggle input:checked + .fw-toggle-slider::after { transform: translateX(20px); }
+
+    /* ── Animations ─────────────────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(14px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    @keyframes scaleIn {
+      from { opacity:0; transform:scale(.95); }
+      to   { opacity:1; transform:scale(1); }
+    }
+    .animate-page   { animation: fadeUp .35s ease-out forwards; }
+    .animate-modal  { animation: scaleIn .2s ease-out forwards; }
+    .animate-pulse-dot {
+      display: inline-block; width: 8px; height: 8px;
+      border-radius: 50%; background: var(--success);
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ── Modals ──────────────────────────────────────────────────── */
+    .fw-modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(28,27,58,.75);
+      backdrop-filter: blur(6px);
+      z-index: 1050;
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .fw-modal-backdrop.z-top { z-index: 1060; }
+    .fw-modal-backdrop.z-emergency { z-index: 1070; background: rgba(127,29,29,.8); }
+    .fw-modal {
+      background: #fff;
+      border-radius: 20px;
+      padding: 2rem;
+      width: 100%; max-width: 480px;
+      box-shadow: 0 20px 60px rgba(28,27,58,.18);
+      max-height: 90vh; overflow-y: auto;
+    }
+    .fw-modal.wide { max-width: 860px; }
+
+    /* ── Auth Screen ────────────────────────────────────────────── */
+    #auth-screen {
+      min-height: 100vh;
+      background: var(--ink);
+      display: flex; align-items: center; justify-content: center;
+      padding: 2rem;
+    }
+    .auth-card {
+      background: #fff;
+      border-radius: 24px;
+      padding: 2.5rem;
+      width: 100%; max-width: 380px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.3);
+    }
+
+    /* ── Loading splash ─────────────────────────────────────────── */
+    #loading-screen {
+      position: fixed; inset: 0;
+      background: var(--ink);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+      flex-direction: column; gap: 1rem;
+    }
+    .loader-ring {
+      width: 40px; height: 40px;
+      border: 3px solid rgba(255,255,255,.1);
+      border-top-color: var(--grape-light);
+      border-radius: 50%;
+      animation: spin .75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Terminal / Log ─────────────────────────────────────────── */
+    .terminal-box {
+      background: var(--ink);
+      border-radius: 14px;
+      padding: 1.5rem;
+      font-family: var(--font-mono);
+      font-size: .75rem;
+      min-height: 280px;
+      max-height: min(70vh, 640px);
+      overflow-x: hidden;
+      overflow-y: auto;
+      color: #4ADE80;
+    }
+    .log-time  { color: #6B7280; }
+    .log-event { color: #fff; font-weight: 700; }
+    .log-user  { color: #60A5FA; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .log-ip    { color: #9CA3AF; opacity: .95; min-width: 0; word-break: break-word; overflow-wrap: anywhere; line-height: 1.45; }
+    .log-row {
+      display: grid;
+      grid-template-columns: minmax(118px, auto) minmax(72px, max-content) minmax(96px, 1fr) minmax(0, 2.5fr);
+      gap: .5rem .75rem;
+      align-items: start;
+      padding-bottom: .65rem;
+      margin-bottom: .35rem;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    @media (max-width: 991px) {
+      .log-row {
+        grid-template-columns: 1fr;
+        gap: .25rem;
+      }
+      .log-user { max-width: none; white-space: normal; }
+    }
+
+    /* ── System Health ─────────────────────────────────────────── */
+    .health-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .health-ok   { background: var(--success); }
+    .health-warn { background: var(--warning); }
+    .health-err  { background: var(--danger); }
+
+    /* ── Mobile topbar ─────────────────────────────────────────── */
+    #topbar {
+      display: none;
+      position: fixed; top: 0; left: 0; right: 0;
+      background: var(--ink); padding: .75rem 1rem;
+      z-index: 850; align-items: center; gap: 1rem;
+    }
+    @media (max-width: 991px) {
+      #topbar { display: flex; }
+      #main-content { padding-top: 5rem; }
+    }
+
+    /* ── STRIDE Security Banner ────────────────────────────────── */
+    .stride-banner {
+      background: linear-gradient(135deg, #1C1B3A 0%, #3B0764 100%);
+      border-radius: 14px; padding: 1rem 1.5rem;
+      color: #fff; margin-bottom: 1.5rem;
+      display: flex; align-items: center; gap: 1rem;
+      font-size: .8rem;
+    }
+    .stride-pill {
+      background: rgba(255,255,255,.12);
+      border-radius: 6px; padding: .2rem .5rem;
+      font-size: .6rem; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    /* ── Range Input ────────────────────────────────────────────── */
+    input[type="range"] {
+      accent-color: var(--grape);
+      height: 6px;
+    }
+
+    /* ── Alert box ──────────────────────────────────────────────── */
+    .alert-fw {
+      padding: .75rem 1rem; border-radius: 10px;
+      font-size: .8rem; font-weight: 600;
+    }
+    .alert-fw.success { background:#D1FAE5; color:#065F46; border:1px solid #A7F3D0; }
+    .alert-fw.danger  { background:#FEE2E2; color:#991B1B; border:1px solid #FECACA; }
+
+    /* ── Rate limit progress ────────────────────────────────────── */
+    .rate-bar { height: 6px; border-radius: 99px; background: #EDE9FE; overflow: hidden; }
+    .rate-fill { height: 100%; border-radius: 99px; background: var(--grape); transition: width .4s; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     LOADING SPLASH
+══════════════════════════════════════════ -->
+<div id="loading-screen">
+  <div class="brand-badge" style="width:52px;height:52px;font-size:1rem;">FW</div>
+  <div class="loader-ring"></div>
+  <p style="color:#6B7280;font-size:.8rem;font-family:var(--font-mono);">Checking session…</p>
+</div>
+
+<!-- ═══════════════════════════════════════
+     AUTH SCREEN
+══════════════════════════════════════════ -->
+<div id="auth-screen" style="display:none;">
+  <!-- STRIDE: Spoofing → display brand clearly; Repudiation → session logging on login -->
+  <div class="auth-card">
+    <div class="text-center mb-4">
+      <div class="brand-badge mx-auto mb-3" style="width:48px;height:48px;font-size:.95rem;">FW</div>
+      <h1 style="font-size:1.5rem;font-weight:700;color:var(--ink);">Admin Login</h1>
+      <p style="font-size:.875rem;color:var(--text-muted);margin:.25rem 0 0;">FlipWise Admin Terminal · Authorized Access Only</p>
+    </div>
+
+    <!-- Rate-limit indicator (STRIDE: DoS) -->
+    <div id="login-attempts-warning" class="alert-fw danger mb-3" style="display:none;">
+      <i class="bi bi-shield-exclamation me-1"></i>
+      Too many login attempts. Please wait before retrying.
+    </div>
+
+    <div id="login-error" class="alert-fw danger mb-3" style="display:none;"></div>
+
+    <form id="login-form" novalidate autocomplete="off">
+      <!-- autocomplete="off" + novalidate = STRIDE: Info Disclosure prevention -->
+      <div class="mb-3">
+        <label class="fw-label">Email</label>
+        <input type="email" id="login-email" class="fw-input" placeholder="admin@flipwise.com"
+               autocomplete="username" maxlength="254" required />
+      </div>
+      <div class="mb-4">
+        <label class="fw-label">Password</label>
+        <div class="position-relative">
+          <input type="password" id="login-password" class="fw-input" placeholder="••••••••"
+                 autocomplete="current-password" maxlength="128" required />
+          <button type="button" class="btn btn-link position-absolute top-50 end-0 translate-middle-y pe-3 text-muted"
+                  onclick="togglePasswordVisibility('login-password',this)" tabindex="-1">
+            <i class="bi bi-eye"></i>
+          </button>
+        </div>
+      </div>
+      <button type="submit" id="login-btn" class="btn btn-grape w-100 py-3 fw-semibold">
+        Sign In to Terminal
+      </button>
+      <div class="text-end mt-3">
+        <button type="button" class="btn btn-link text-muted p-0 small" onclick="openForgotPasswordModal()">Forgot Password?</button>
+      </div>
+    </form>
+
+    <!-- STRIDE Security notice -->
+    <div class="mt-4 pt-3 border-top text-center" style="font-size:.65rem;color:var(--text-muted);">
+      <i class="bi bi-shield-lock me-1"></i>
+      STRIDE-hardened · Session logged · Admin-only access
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     MAIN APP
+══════════════════════════════════════════ -->
+<div id="app" style="display:none;">
+
+  <!-- Mobile topbar -->
+  <div id="topbar">
+    <button class="btn btn-link text-white p-0" onclick="toggleSidebar()">
+      <i class="bi bi-list fs-5"></i>
+    </button>
+    <div class="brand-badge" style="width:30px;height:30px;font-size:.7rem;">FW</div>
+    <span class="text-white fw-bold small">FLIPWISE</span>
+  </div>
+
+  <!-- Sidebar overlay (mobile) -->
+  <div id="sidebar-overlay" style="display:none;position:fixed;inset:0;z-index:899;background:rgba(0,0,0,.5);"
+       onclick="closeSidebar()"></div>
+
+  <!-- Sidebar -->
+  <nav id="sidebar" aria-label="Main navigation">
+    <div class="sidebar-brand-row">
+      <div class="sidebar-brand">
+        <div class="brand-badge">FW</div>
+        <div class="sidebar-brand-text">
+          <div class="brand-title">FLIPWISE</div>
+          <div class="brand-sub">Admin Terminal</div>
+        </div>
+      </div>
+      <button type="button" class="sidebar-collapse-toggle" id="sidebar-collapse-toggle"
+              onclick="toggleSidebarCollapse()" aria-expanded="true" aria-controls="sidebar"
+              title="Collapse sidebar">
+        <i class="bi bi-chevron-double-left" data-collapse-icon aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <div class="nav-section-label">Navigation</div>
+    <div id="sidebar-nav">
+      <button type="button" class="nav-link-item active" data-page="overview" title="Overview">
+        <i class="bi bi-grid-1x2" aria-hidden="true"></i><span class="nav-label">Overview</span>
+      </button>
+      <button type="button" class="nav-link-item" data-page="users" title="User Directory">
+        <i class="bi bi-people" aria-hidden="true"></i><span class="nav-label">User Directory</span>
+      </button>
+      <button type="button" class="nav-link-item" data-page="moderation" title="Content Quality">
+        <i class="bi bi-gem" aria-hidden="true"></i><span class="nav-label">Content Quality</span>
+      </button>
+      <button type="button" class="nav-link-item" data-page="ai" title="Gemini AI">
+        <i class="bi bi-stars" aria-hidden="true"></i><span class="nav-label">Gemini AI</span>
+      </button>
+      <button type="button" class="nav-link-item" data-page="gamify" title="Gamification">
+        <i class="bi bi-controller" aria-hidden="true"></i><span class="nav-label">Gamification</span>
+      </button>
+      <button type="button" class="nav-link-item" data-page="reports" title="Reports & Feedback">
+        <i class="bi bi-chat-square-text" aria-hidden="true"></i><span class="nav-label">Reports & Feedback</span>
+      </button>
+      <button type="button" class="nav-link-item" data-page="security" title="System Logs">
+        <i class="bi bi-shield-check" aria-hidden="true"></i><span class="nav-label">System Logs</span>
+      </button>
+      <button type="button" class="nav-link-item" data-page="settings" title="Settings">
+        <i class="bi bi-gear" aria-hidden="true"></i><span class="nav-label">Settings</span>
+      </button>
+      <button type="button" class="nav-link-item" id="nav-access-control" data-page="access" style="display:none;" title="Access Control">
+        <i class="bi bi-shield-lock" aria-hidden="true"></i><span class="nav-label">Access Control</span>
+      </button>
+    </div>
+
+    <div class="mt-auto pt-3">
+      <div class="sidebar-footer mb-2">
+        <div class="sidebar-footer-details">
+          <div class="sidebar-user-email" id="sidebar-email">—</div>
+          <div class="sidebar-user-role" id="sidebar-user-role">Signed in · Admin</div>
+        </div>
+      </div>
+      <button type="button" class="nav-link-item" id="logout-btn" style="color:#F87171;" title="Terminate session">
+        <i class="bi bi-box-arrow-right" aria-hidden="true"></i><span class="nav-label">Terminate Session</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main id="main-content">
+    <div id="page-container"></div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════
+     MODALS
+══════════════════════════════════════════ -->
+
+<!-- Forgot Password -->
+<div id="auth-modal" class="fw-modal-backdrop z-top" style="display:none;" role="dialog" aria-modal="true">
+  <div class="fw-modal animate-modal">
+    <div class="d-flex justify-content-between align-items-start mb-4">
+      <div>
+        <h3 class="fw-bold mb-1" style="color:var(--ink);font-size:1.25rem;">Forgot Password</h3>
+        <p class="text-muted small mb-0">Enter your registered email and we will send a password reset link.</p>
+      </div>
+      <button class="btn btn-link text-muted p-0" onclick="closeAuthModal()"><i class="bi bi-x-lg fs-5"></i></button>
+    </div>
+
+    <div id="auth-modal-alert" class="mb-3" style="display:none;"></div>
+
+    <form id="auth-modal-form" novalidate autocomplete="off">
+      <div class="mb-3">
+        <label class="fw-label">Email</label>
+        <input type="email" id="auth-email" class="fw-input" placeholder="admin@flipwise.com"
+               maxlength="254" required autocomplete="off" />
+      </div>
+
+      <div class="d-flex justify-content-end gap-2 mt-4">
+        <button type="button" class="btn btn-ghost px-4 py-2" onclick="closeAuthModal()">Cancel</button>
+        <button type="submit" id="auth-submit-btn" class="btn btn-grape px-4 py-2">
+          <span id="auth-submit-text">Send Reset Link</span>
+          <span id="auth-submit-spin" class="spinner-border spinner-border-sm ms-2" style="display:none;"></span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Logout Confirm Modal -->
+<div id="logout-modal" class="fw-modal-backdrop" style="display:none;" role="dialog" aria-modal="true">
+  <div class="fw-modal animate-modal" style="max-width:400px;">
+    <h3 class="fw-bold mb-2" style="color:var(--ink);font-size:1.2rem;">Terminate session?</h3>
+    <p class="text-muted small mb-4">Are you sure you want to sign out of the admin terminal? Your session will be logged.</p>
+    <div class="d-flex justify-content-end gap-2">
+      <button class="btn btn-ghost px-4 py-2" onclick="closeLogoutModal()">Cancel</button>
+      <button class="btn btn-danger px-4 py-2 fw-semibold" id="confirm-logout-btn">
+        <i class="bi bi-box-arrow-right me-1"></i>Sign Out
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- User Detail Modal -->
+<div id="user-detail-modal" class="fw-modal-backdrop" style="display:none;" role="dialog" aria-modal="true">
+  <div class="fw-modal wide animate-modal" id="user-detail-content"></div>
+</div>
+
+<!-- Super Admin: Access Control editor -->
+<div id="access-control-modal" class="fw-modal-backdrop z-top" style="display:none;" role="dialog" aria-modal="true">
+  <div class="fw-modal wide animate-modal" id="access-control-modal-body"></div>
+</div>
+
+<!-- Emergency Code Modal -->
+<div id="emergency-modal" class="fw-modal-backdrop z-emergency" style="display:none;" role="dialog" aria-modal="true">
+  <div class="fw-modal animate-modal" style="max-width:420px;border-top:3px solid var(--danger);">
+    <div class="mb-4">
+      <span class="fw-badge" style="background:#FEE2E2;color:#991B1B;font-size:.6rem;letter-spacing:.15em;">
+        ⚠ Emergency Authorization Required
+      </span>
+      <h3 class="fw-bold mt-2 mb-1" style="color:var(--ink);font-size:1.2rem;" id="emergency-action-title">Confirm Action</h3>
+      <p class="text-muted small mb-0" id="emergency-action-desc">Enter both admin codes to proceed.</p>
+    </div>
+    <div id="emergency-error" class="alert-fw danger mb-3" style="display:none;"></div>
+    <div class="mb-3">
+      <label class="fw-label">Admin Code</label>
+      <input type="password" id="emergency-admin-code" class="fw-input" placeholder="Admin authorization code"
+             maxlength="32" autocomplete="off" />
+    </div>
+    <div class="mb-4">
+      <label class="fw-label">Super Admin Code</label>
+      <input type="password" id="emergency-super-code" class="fw-input" placeholder="Super admin authorization code"
+             maxlength="32" autocomplete="off" />
+    </div>
+    <div class="d-flex justify-content-end gap-2">
+      <button class="btn btn-ghost px-4 py-2" onclick="closeEmergencyModal()">Cancel</button>
+      <button class="btn btn-danger px-4 py-2 fw-semibold" onclick="confirmEmergencyAction()">Authorize</button>
+    </div>
+  </div>
+</div>
+
+<!-- Feedback Modal -->
+<div id="feedback-modal" class="fw-modal-backdrop" style="display:none;" role="dialog" aria-modal="true">
+  <div class="fw-modal animate-modal" style="max-width:560px;" id="feedback-modal-content"></div>
+</div>
+
+<!-- Toast notification -->
+<div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index:9999;"></div>
+
+<!-- Bootstrap 5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script src="js/app-core.js"></script>
+<script src="js/page-overview.js"></script>
+<script src="js/page-users.js"></script>
+<script src="js/page-moderation.js"></script>
+<script src="js/page-ai.js"></script>
+<script src="js/page-gamify.js"></script>
+<script src="js/page-reports.js"></script>
+<script src="js/page-security.js"></script>
+<script src="js/page-settings.js"></script>
+<script src="js/page-access-control.js"></script>
+</body>
+</html>
