@@ -27,12 +27,20 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flipwise.app.R
 import com.flipwise.app.ui.theme.*
 import com.flipwise.app.ui.components.FlipWiseTextField
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.ElectricBolt
+import androidx.compose.material.icons.rounded.AlternateEmail
+import androidx.compose.material.icons.rounded.Mail
+import androidx.compose.material.icons.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Person
 
 fun calculatePasswordStrength(password: String): Int {
     if (password.isEmpty()) return 0
@@ -150,6 +158,7 @@ fun RegisterScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val dimensions = FlipWiseDesign.dimensions
     val profileViewModel: com.flipwise.app.viewmodel.ProfileViewModel = viewModel()
 
     val infiniteTransition = rememberInfiniteTransition(label = "background")
@@ -198,7 +207,7 @@ fun RegisterScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp),
+                .padding(dimensions.paddingLarge),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -209,7 +218,7 @@ fun RegisterScreen(
                 Image(
                     painter = painterResource(id = R.drawable.app_logo),
                     contentDescription = "FlipWise Logo",
-                    modifier = Modifier.size(140.dp)
+                    modifier = Modifier.size(dimensions.logoSize)
                 )
 
                 // Floating Sparkle Badge
@@ -256,15 +265,15 @@ fun RegisterScreen(
             Text(
                 text = "Join FlipWise",
                 color = NavyInk,
-                fontSize = 42.sp,
+                fontSize = dimensions.titleFontSize,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-1).sp
             )
             Text(
                 text = "Start your learning journey today",
                 color = NavyInk.copy(alpha = 0.6f),
-                fontSize = 18.sp,
-                modifier = Modifier.padding(top = 8.dp)
+                fontSize = dimensions.bodyFontSize,
+                modifier = Modifier.padding(top = dimensions.paddingSmall)
             )
 
             Spacer(modifier = Modifier.height(48.dp))
@@ -272,15 +281,16 @@ fun RegisterScreen(
             // Main Card
             Surface(
                 modifier = Modifier
+                    .widthIn(max = 600.dp)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(32.dp)),
+                    .clip(RoundedCornerShape(dimensions.cardCornerRadius)),
                 color = Color.White.copy(alpha = 0.8f),
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.6f)),
                 shadowElevation = 0.dp
             ) {
                 Column(
-                    modifier = Modifier.padding(32.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                    modifier = Modifier.padding(dimensions.paddingLarge),
+                    verticalArrangement = Arrangement.spacedBy(dimensions.paddingLarge)
                 ) {
                     // Error Message
                     AnimatedVisibility(
@@ -378,7 +388,7 @@ fun RegisterScreen(
                         FlipWiseTextField(
                             value = password,
                             onValueChange = { password = it },
-                            placeholder = "Enter a strong password",
+                            placeholder = "Min 8 chars, 1 uppercase, 1 digit, 1 special",
                             leadingIcon = Icons.Rounded.Lock,
                             isPassword = true,
                             showPassword = showPassword,
@@ -412,8 +422,10 @@ fun RegisterScreen(
                         onClick = {
                             if (name.isBlank() || nickname.isBlank() || email.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
                                 error = "Please fill in all fields"
-                            } else if (!email.contains("@")) {
-                                error = "Please enter a valid email"
+                            } else if (!email.lowercase().endsWith("@gmail.com")) {
+                                error = "Please enter a valid Gmail address (@gmail.com)"
+                            } else if (nickname.trim().length < 3) {
+                                error = "Nickname must be at least 3 characters"
                             } else if (calculatePasswordStrength(password) < 3) {
                                 error = "Password is too weak. Add uppercase, numbers, and special characters."
                             } else if (password != confirmPassword) {
@@ -422,13 +434,24 @@ fun RegisterScreen(
                                 isLoading = true
                                 error = null
                                 scope.launch {
+                                    if (profileViewModel.isUsernameTaken(nickname.trim().lowercase())) {
+                                        error = "Username is already taken. Please pick another one."
+                                        isLoading = false
+                                        return@launch
+                                    }
+
                                     val result = profileViewModel.signUp(email.trim(), password.trim())
                                     if (result.isSuccess) {
                                         // Initialize profile
-                                        profileViewModel.register(nickname.trim(), name.trim())
+                                        profileViewModel.register(nickname.trim().lowercase(), name.trim())
                                         onRegisterSuccess(email)
                                     } else {
-                                        error = result.exceptionOrNull()?.message ?: "Registration failed"
+                                        val e = result.exceptionOrNull()
+                                        error = when (e) {
+                                            is com.google.firebase.auth.FirebaseAuthUserCollisionException ->
+                                                "This email is already associated with an account."
+                                            else -> e?.message ?: "Registration failed"
+                                        }
                                     }
                                     isLoading = false
                                 }
@@ -437,7 +460,7 @@ fun RegisterScreen(
                         enabled = !isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(64.dp),
+                            .height(dimensions.buttonHeight),
                         shape = RoundedCornerShape(20.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.Transparent

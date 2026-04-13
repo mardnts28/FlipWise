@@ -17,9 +17,8 @@ import net.sqlcipher.database.SupportFactory
         Friend::class,
         Challenge::class,
         AuditLog::class
-
     ],
-    version = 8,
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

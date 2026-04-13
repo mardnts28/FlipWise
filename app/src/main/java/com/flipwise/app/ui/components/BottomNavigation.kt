@@ -1,7 +1,11 @@
 package com.flipwise.app.ui.components
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.CollectionsBookmark
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MilitaryTech
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
@@ -55,11 +59,11 @@ fun BottomNavigationBar(navController: NavController) {
                     }
                 },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor   = GrapePop,
-                    selectedTextColor   = GrapePop,
-                    unselectedIconColor = NavyInk60,
-                    unselectedTextColor = NavyInk60,
-                    indicatorColor      = GrapePop20
+                    selectedIconColor   = Color(0xFF7C3AED), // GrapePop
+                    selectedTextColor   = Color(0xFF7C3AED), // GrapePop
+                    unselectedIconColor = Color(0x991E1B4B), // NavyInk60
+                    unselectedTextColor = Color(0x991E1B4B), // NavyInk60
+                    indicatorColor      = Color(0x337C3AED)  // GrapePop20
                 )
             )
         }

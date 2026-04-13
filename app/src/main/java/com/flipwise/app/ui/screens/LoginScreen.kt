@@ -20,7 +20,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
-import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Mail
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -58,6 +61,7 @@ fun LoginScreen(
     val scope = rememberCoroutineScope()
     
     val focusManager = LocalFocusManager.current
+    val dimensions = FlipWiseDesign.dimensions
 
     val infiniteTransition = rememberInfiniteTransition(label = "background")
     
@@ -103,7 +107,7 @@ fun LoginScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp),
+                .padding(dimensions.paddingLarge),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -114,7 +118,7 @@ fun LoginScreen(
                 Image(
                     painter = painterResource(id = R.drawable.app_logo),
                     contentDescription = "FlipWise Logo",
-                    modifier = Modifier.size(140.dp)
+                    modifier = Modifier.size(dimensions.logoSize)
                 )
                 
                 // Floating Sparkle Badge
@@ -161,15 +165,15 @@ fun LoginScreen(
             Text(
                 text = "Welcome Back",
                 color = NavyInk,
-                fontSize = 42.sp,
+                fontSize = dimensions.titleFontSize,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-1).sp
             )
             Text(
                 text = "Continue your learning journey",
                 color = NavyInk.copy(alpha = 0.6f),
-                fontSize = 18.sp,
-                modifier = Modifier.padding(top = 8.dp)
+                fontSize = dimensions.bodyFontSize,
+                modifier = Modifier.padding(top = dimensions.paddingSmall)
             )
 
             Spacer(modifier = Modifier.height(48.dp))
@@ -177,15 +181,16 @@ fun LoginScreen(
             // Main Card
             Surface(
                 modifier = Modifier
+                    .widthIn(max = 600.dp)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(32.dp)),
+                    .clip(RoundedCornerShape(dimensions.cardCornerRadius)),
                 color = Color.White.copy(alpha = 0.8f),
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.6f)),
                 shadowElevation = 0.dp
             ) {
                 Column(
-                    modifier = Modifier.padding(32.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                    modifier = Modifier.padding(dimensions.paddingLarge),
+                    verticalArrangement = Arrangement.spacedBy(dimensions.paddingLarge)
                 ) {
                     // Success Message
                     AnimatedVisibility(
@@ -371,7 +376,7 @@ fun LoginScreen(
                         enabled = !isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(64.dp),
+                            .height(dimensions.buttonHeight),
                         shape = RoundedCornerShape(20.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.Transparent

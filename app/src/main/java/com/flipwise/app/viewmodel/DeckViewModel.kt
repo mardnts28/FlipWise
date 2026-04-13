@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.flipwise.app.data.ai.FileTextExtractor
 import com.flipwise.app.data.ai.GeminiFlashcardGenerator
+import com.flipwise.app.data.ai.GeneratedCard
 import com.flipwise.app.data.database.AppDatabase
 import com.flipwise.app.data.model.*
 import kotlinx.coroutines.flow.*
@@ -74,40 +75,36 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
                 val list = mutableListOf<Achievement>()
                 
                 // Streaks
-                list.add(Achievement("streak_3", "3-Day Streak", "Maintain a 3-day study streak", "🔥", "Streaks"))
-                list.add(Achievement("streak_7", "Week Warrior", "Maintain a 7-day study streak", "🔥", "Streaks"))
-                list.add(Achievement("streak_14", "Fortnight Fighter", "Maintain a 14-day study streak", "🔥", "Streaks"))
-                list.add(Achievement("streak_21", "21-Day Habit", "Maintain a 21-day study streak", "🔥", "Streaks"))
-                list.add(Achievement("streak_30", "Month Master", "Maintain a 30-day study streak", "🏆", "Streaks"))
-                list.add(Achievement("streak_90", "Season Scholar", "Maintain a 90-day study streak", "🏆", "Streaks"))
-                list.add(Achievement("streak_210", "Grit Greatness", "Maintain a 210-day study streak", "🏆", "Streaks"))
-                list.add(Achievement("streak_365", "Year Legend", "Maintain a 365-day study streak", "👑", "Streaks"))
+                list.add(Achievement("streak_3", "3-Day Streak", "Maintain a 3-day study streak", "🔥", "Streaks", tier = "bronze"))
+                list.add(Achievement("streak_7", "Week Warrior", "Maintain a 7-day study streak", "🔥", "Streaks", tier = "bronze"))
+                list.add(Achievement("streak_14", "Fortnight Fighter", "Maintain a 14-day study streak", "🥈", "Streaks", tier = "silver"))
+                list.add(Achievement("streak_21", "21-Day Habit", "Maintain a 21-day study streak", "🥈", "Streaks", tier = "silver"))
+                list.add(Achievement("streak_30", "Month Master", "Maintain a 30-day study streak", "🥇", "Streaks", tier = "gold"))
+                list.add(Achievement("streak_90", "Season Scholar", "Maintain a 90-day study streak", "🥇", "Streaks", tier = "gold"))
+                list.add(Achievement("streak_210", "Grit Greatness", "Maintain a 210-day study streak", "🏆", "Streaks", tier = "gold"))
+                list.add(Achievement("streak_365", "Year Legend", "Maintain a 365-day study streak", "👑", "Streaks", tier = "gold"))
 
                 // Cards
-                list.add(Achievement("cards_10", "First Steps", "Study 10 flashcards", "🌱", "Cards"))
-                list.add(Achievement("cards_30", "Getting Started", "Study 30 flashcards", "🌱", "Cards"))
-                list.add(Achievement("cards_50", "Steady Learner", "Study 50 flashcards", "🌿", "Cards"))
-                list.add(Achievement("cards_150", "Centurion", "Study 150 flashcards", "💯", "Cards"))
-                list.add(Achievement("cards_250", "Knowledge Seeker", "Study 250 flashcards", "🎓", "Cards"))
-                list.add(Achievement("cards_500", "Scholar", "Study 500 flashcards", "🎓", "Cards"))
+                list.add(Achievement("cards_10", "First Steps", "Study 10 flashcards", "🌱", "Cards", tier = "bronze"))
+                list.add(Achievement("cards_30", "Getting Started", "Study 30 flashcards", "🌱", "Cards", tier = "bronze"))
+                list.add(Achievement("cards_50", "Steady Learner", "Study 50 flashcards", "🥈", "Cards", tier = "silver"))
+                list.add(Achievement("cards_150", "Centurion", "Study 150 flashcards", "🥈", "Cards", tier = "silver"))
+                list.add(Achievement("cards_250", "Knowledge Seeker", "Study 250 flashcards", "🥇", "Cards", tier = "gold"))
+                list.add(Achievement("cards_500", "Scholar", "Study 500 flashcards", "🥇", "Cards", tier = "gold"))
 
                 // Mastery
-                list.add(Achievement("mastery_10", "Novice Master", "Master 10 cards", "⭐", "Mastery"))
-                list.add(Achievement("mastery_30", "Adept Master", "Master 30 cards", "⭐", "Mastery"))
-                list.add(Achievement("mastery_50", "Skillful Master", "Master 50 cards", "🌟", "Mastery"))
-                list.add(Achievement("mastery_100", "Elite Master", "Master 100 cards", "🌟", "Mastery"))
-                list.add(Achievement("mastery_150", "Grand Master", "Master 150 cards", "✨", "Mastery"))
-                list.add(Achievement("mastery_250", "Zen Master", "Master 250 cards", "✨", "Mastery"))
-                list.add(Achievement("mastery_500", "Ultimate Master", "Master 500 cards", "👑", "Mastery"))
+                list.add(Achievement("mastery_10", "Novice Master", "Master 10 cards", "🥉", "Mastery", tier = "bronze"))
+                list.add(Achievement("mastery_30", "Adept Master", "Master 30 cards", "🥉", "Mastery", tier = "bronze"))
+                list.add(Achievement("mastery_50", "Skillful Master", "Master 50 cards", "🥈", "Mastery", tier = "silver"))
+                list.add(Achievement("mastery_100", "Elite Master", "Master 100 cards", "🥈", "Mastery", tier = "silver"))
+                list.add(Achievement("mastery_150", "Grand Master", "Master 150 cards", "🥇", "Mastery", tier = "gold"))
+                list.add(Achievement("mastery_250", "Zen Master", "Master 250 cards", "🥇", "Mastery", tier = "gold"))
+                list.add(Achievement("mastery_500", "Ultimate Master", "Master 500 cards", "👑", "Mastery", tier = "gold"))
 
-                // Points (renamed to complete as requested)
-                list.add(Achievement("points_10", "Beginner Complete", "Earn points from 10 cards", "💎", "Points"))
-                list.add(Achievement("points_30", "Novice Complete", "Earn points from 30 cards", "💎", "Points"))
-                list.add(Achievement("points_50", "Intermediate Complete", "Earn points from 50 cards", "💎", "Points"))
-                list.add(Achievement("points_100", "Advanced Complete", "Earn points from 100 cards", "💎", "Points"))
-                list.add(Achievement("points_150", "Expert Complete", "Earn points from 150 cards", "💎", "Points"))
-                list.add(Achievement("points_250", "Master Complete", "Earn points from 250 cards", "💎", "Points"))
-                list.add(Achievement("points_500", "Legendary Complete", "Earn points from 500 cards", "💎", "Points"))
+                // Points
+                list.add(Achievement("points_10", "Beginner Points", "Earn points from 10 cards", "🥉", "Points", tier = "bronze"))
+                list.add(Achievement("points_100", "Advanced Points", "Earn points from 100 cards", "🥈", "Points", tier = "silver"))
+                list.add(Achievement("points_500", "Legendary Points", "Earn points from 500 cards", "🥇", "Points", tier = "gold"))
 
                 achievementDao.insertAchievements(list)
             }
@@ -182,6 +179,12 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
 
     // ─── Decks ───────────────────────────────────────────────────
     fun getCardsForDeck(deckId: String) = repository.getCardsForDeck(deckId)
+    
+    fun getCardsForDecks(deckIds: List<String>): Flow<List<Flashcard>> {
+        if (deckIds.isEmpty()) return flowOf(emptyList())
+        val flows = deckIds.map { repository.getCardsForDeck(it) }
+        return combine(flows) { arrays -> arrays.flatMap { it } }
+    }
 
     fun createDeck(name: String, subject: String, color: String, icon: String) {
         viewModelScope.launch {
@@ -189,6 +192,12 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
                 Deck(id = UUID.randomUUID().toString(), name = name, subject = subject, color = color, icon = icon)
             )
             logAction("DECK_CREATED", "name=$name")
+        }
+    }
+
+    fun updateDeck(deck: Deck) {
+        viewModelScope.launch {
+            repository.updateDeck(deck)
         }
     }
 
@@ -210,6 +219,12 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
             deckDao.getDeckById(deckId)?.let { deck ->
                 repository.updateDeck(deck.copy(cardCount = count))
             }
+        }
+    }
+
+    fun updateFlashcard(card: Flashcard) {
+        viewModelScope.launch {
+            repository.updateFlashcard(card)
         }
     }
 
@@ -351,35 +366,13 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
 
                     cardsResult.fold(
                         onSuccess = { generatedCards ->
-                            // Save all generated cards to the deck
-                            var savedCount = 0
-                            for (card in generatedCards) {
-                                try {
-                                    repository.addFlashcard(
-                                        Flashcard(
-                                            id = UUID.randomUUID().toString(),
-                                            deckId = deckId,
-                                            front = card.front,
-                                            back = card.back,
-                                            options = card.options?.joinToString("|")
-                                        )
-                                    )
-                                    savedCount++
-                                } catch (e: Exception) {
-                                    // Continue saving other cards even if one fails
-                                }
-                            }
-
-                            // Update deck card count
-                            val count = cardDao.getCardCountForDeck(deckId)
-                            deckDao.getDeckById(deckId)?.let { deck ->
-                                repository.updateDeck(deck.copy(cardCount = count))
-                            }
-
-                            _aiGenerationState.value = AiGenerationState.Success(savedCount)
+                            saveGeneratedCards(deckId, generatedCards)
                         },
                         onFailure = { error ->
-                            _aiGenerationState.value = AiGenerationState.Error(error.message ?: "Failed to generate flashcards")
+                            _aiGenerationState.value = AiGenerationState.Loading("AI failed. Using fallback extraction...")
+                            // Fallback logic
+                            val fallbackCards = generateFallbackCards(text)
+                            saveGeneratedCards(deckId, fallbackCards)
                         }
                     )
                 },
@@ -388,6 +381,75 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
                 }
             )
         }
+    }
+
+    private fun generateFallbackCards(text: String): List<GeneratedCard> {
+        val cards = mutableListOf<GeneratedCard>()
+        val lines = text.split("\n").filter { it.isNotBlank() }
+        
+        // Simple fallback: Try to find "Question: Answer" patterns or just use adjacent lines
+        var i = 0
+        while (i < lines.size - 1 && cards.size < 20) {
+            val line = lines[i].trim()
+            if (line.contains("?") || line.length > 20) {
+                // If it looks like a question or a long sentence
+                val question = line
+                val answer = lines[i+1].trim()
+                
+                // Occasionally create multiple choice if we have enough lines
+                if (i + 4 < lines.size && i % 3 == 0) {
+                    val wrongOptions = listOf(lines[i+2].trim(), lines[i+3].trim(), lines[i+4].trim())
+                    cards.add(GeneratedCard(
+                        front = question,
+                        back = answer,
+                        options = (wrongOptions + answer).shuffled()
+                    ))
+                    i += 5
+                } else {
+                    cards.add(GeneratedCard(
+                        front = question,
+                        back = answer,
+                        options = null
+                    ))
+                    i += 2
+                }
+            } else {
+                i++
+            }
+        }
+        
+        // If still empty, just take any lines
+        if (cards.isEmpty() && lines.size >= 2) {
+            cards.add(GeneratedCard(front = lines[0], back = lines[1], options = null))
+        }
+        
+        return cards
+    }
+
+    private suspend fun saveGeneratedCards(deckId: String, generatedCards: List<GeneratedCard>) {
+        var savedCount = 0
+        for (card in generatedCards) {
+            try {
+                repository.addFlashcard(
+                    Flashcard(
+                        id = UUID.randomUUID().toString(),
+                        deckId = deckId,
+                        front = card.front,
+                        back = card.back,
+                        options = card.options?.joinToString("|")
+                    )
+                )
+                savedCount++
+            } catch (e: Exception) {}
+        }
+
+        // Update deck card count
+        val count = cardDao.getCardCountForDeck(deckId)
+        deckDao.getDeckById(deckId)?.let { deck ->
+            repository.updateDeck(deck.copy(cardCount = count))
+        }
+
+        _aiGenerationState.value = AiGenerationState.Success(savedCount)
     }
 
     fun resetAiGenerationState() {

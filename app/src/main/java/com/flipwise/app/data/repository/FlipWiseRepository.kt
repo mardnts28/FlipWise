@@ -11,8 +11,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.withContext
 
 class FlipWiseRepository(context: Context) {
+    private val repositoryScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
     private val appDatabase by lazy { AppDatabase.getDatabase(context) }
     private val deckDao    by lazy { appDatabase.deckDao() }
     private val flashcardDao by lazy { appDatabase.flashcardDao() }
@@ -20,6 +27,7 @@ class FlipWiseRepository(context: Context) {
     private val sessionDao by lazy { appDatabase.studySessionDao() }
 
     private val auth by lazy { FirebaseAuth.getInstance() }
+    private val integrityManager by lazy { com.flipwise.app.data.security.IntegrityManager(context) }
     private val remoteDatabase by lazy { 
         val url = "https://flipwise-dc052-default-rtdb.asia-southeast1.firebasedatabase.app"
         // Persistence must be enabled BEFORE any other usage of the database
@@ -36,7 +44,22 @@ class FlipWiseRepository(context: Context) {
 
     fun isUserLoggedIn(): Boolean = auth.currentUser != null
 
+    fun isGoogleUser(): Boolean {
+        return auth.currentUser?.providerData?.any { it.providerId == "google.com" } ?: false
+    }
+
+    suspend fun isAdmin(): Boolean {
+        val profile = userProfile.firstOrNull() ?: syncProfile()
+        return profile?.role == "admin"
+    }
+
+    suspend fun getIntegrityToken(nonce: String): String? {
+        return integrityManager.fetchIntegrityToken(nonce)
+    }
+
     // --- Authentication ---
+    val currentUserEmail: String get() = auth.currentUser?.email ?: ""
+
     suspend fun signUp(email: String, password: String): Result<Unit> {
         return try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
@@ -71,9 +94,10 @@ class FlipWiseRepository(context: Context) {
     fun signOut() {
         auth.signOut()
         // Clear local database to align user profiles and data correctly
-        @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
-        kotlinx.coroutines.GlobalScope.launch {
-            appDatabase.clearAllTables()
+        repositoryScope.launch {
+            withContext(Dispatchers.IO) {
+                appDatabase.clearAllTables()
+            }
         }
     }
 
@@ -88,7 +112,9 @@ class FlipWiseRepository(context: Context) {
             remoteDatabase.child("users").child(currentUserId).removeValue().await()
             
             // 3. Clear local DB
-            appDatabase.clearAllTables()
+            withContext(Dispatchers.IO) {
+                appDatabase.clearAllTables()
+            }
             
             // 4. Delete Auth account
             user.delete().await()
@@ -164,11 +190,11 @@ class FlipWiseRepository(context: Context) {
 
     suspend fun updateProfile(profile: UserProfile) {
         profileDao.insertProfile(profile)
-        // Sync to cloud
-        remoteDatabase.child("users").child(userId).child("profile").setValue(profile).await()
-        // Save to public leaderboard reference too
-        remoteDatabase.child("leaderboard").child(userId).setValue(
-            mapOf(
+        
+        // Atomic multi-path update to keep private profile and public leaderboard in sync
+        val updates = hashMapOf<String, Any>(
+            "users/$userId/profile" to profile,
+            "leaderboard/$userId" to mapOf(
                 "id" to userId,
                 "username" to profile.username,
                 "displayName" to profile.displayName,
@@ -177,7 +203,8 @@ class FlipWiseRepository(context: Context) {
                 "xp" to profile.xp,
                 "level" to profile.level
             )
-        ).await()
+        )
+        remoteDatabase.updateChildren(updates).await()
     }
 
     suspend fun syncProfile(): UserProfile? {
@@ -296,6 +323,21 @@ class FlipWiseRepository(context: Context) {
     fun getActiveChallenges(): Flow<List<Challenge>> = appDatabase.challengeDao().getAllChallenges()
 
     // --- Friends Social System ---
+    suspend fun isUsernameTaken(username: String): Boolean {
+        return try {
+            val snapshot = remoteDatabase.child("leaderboard")
+                .orderByChild("username")
+                .equalTo(username.trim())
+                .get()
+                .await()
+            
+            // Check if any user other than the current one has this username
+            snapshot.children.any { it.key != userId }
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     suspend fun findUserByUsername(username: String): UserProfile? {
         return try {
             val snapshot = remoteDatabase.child("leaderboard")
@@ -312,26 +354,78 @@ class FlipWiseRepository(context: Context) {
     }
 
     suspend fun addFriend(targetId: String, targetProfile: UserProfile) {
-        // 1. Add to my friends list in cloud
-        val friendEntry = Friend(
+        val currentProfile = userProfile.firstOrNull() ?: UserProfile(id = userId)
+        
+        // 1. Add to target user's friends list as "pending" (this is the notification)
+        val incomingRequest = Friend(
+            id = userId,
+            userId = targetId, // Target is the "owner" of this list entry
+            username = currentProfile.username,
+            displayName = currentProfile.displayName,
+            avatar = currentProfile.avatar,
+            status = "pending",
+            addedAt = System.currentTimeMillis(),
+            totalPoints = currentProfile.totalPoints,
+            currentStreak = 0,
+            totalCardsStudied = 0
+        )
+        remoteDatabase.child("users").child(targetId).child("friends").child(userId).setValue(incomingRequest).await()
+        
+        // 2. Add to my own friends list as "sent"
+        val outgoingRequest = Friend(
             id = targetId,
-            userId = userId,
+            userId = userId, // I am the "owner"
             username = targetProfile.username,
             displayName = targetProfile.displayName,
             avatar = targetProfile.avatar,
-            status = "accepted",
+            status = "sent",
             addedAt = System.currentTimeMillis(),
             totalPoints = targetProfile.totalPoints,
-            currentStreak = 0, // Simplified for now
+            currentStreak = 0,
             totalCardsStudied = 0
         )
-        remoteDatabase.child("users").child(userId).child("friends").child(targetId).setValue(friendEntry).await()
+        remoteDatabase.child("users").child(userId).child("friends").child(targetId).setValue(outgoingRequest).await()
         
-        // 2. Add to my local DB
-        appDatabase.friendDao().insertFriend(friendEntry)
+        // 3. Keep local DB in sync for me
+        appDatabase.friendDao().insertFriend(outgoingRequest)
+    }
+
+    suspend fun acceptFriendRequest(friend: Friend) {
+        val currentProfile = userProfile.firstOrNull() ?: UserProfile(id = userId)
+        
+        // 1. Update my entry for them to "accepted"
+        val acceptedFriendMe = friend.copy(status = "accepted")
+        remoteDatabase.child("users").child(userId).child("friends").child(friend.id).setValue(acceptedFriendMe).await()
+        appDatabase.friendDao().insertFriend(acceptedFriendMe)
+        
+        // 2. Update their entry for me to "accepted"
+        val acceptedFriendThem = Friend(
+            id = userId,
+            userId = friend.id,
+            username = currentProfile.username,
+            displayName = currentProfile.displayName,
+            avatar = currentProfile.avatar,
+            status = "accepted",
+            addedAt = System.currentTimeMillis(),
+            totalPoints = currentProfile.totalPoints,
+            currentStreak = 0,
+            totalCardsStudied = 0
+        )
+        remoteDatabase.child("users").child(friend.id).child("friends").child(userId).setValue(acceptedFriendThem).await()
+    }
+
+    suspend fun declineFriendRequest(friendId: String) {
+        // Remove from both lists
+        remoteDatabase.child("users").child(userId).child("friends").child(friendId).removeValue().await()
+        remoteDatabase.child("users").child(friendId).child("friends").child(userId).removeValue().await()
+        appDatabase.friendDao().deleteFriend(friendId)
     }
 
     fun getFriendsFlow(): Flow<List<Friend>> = callbackFlow {
+        if (!isUserLoggedIn()) {
+            trySend(emptyList())
+            return@callbackFlow
+        }
         val ref = remoteDatabase.child("users").child(userId).child("friends")
         val listener = object : com.google.firebase.database.ValueEventListener {
             override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
@@ -339,8 +433,7 @@ class FlipWiseRepository(context: Context) {
                 trySend(friends)
                 
                 // Keep local DB in sync
-                @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
-                kotlinx.coroutines.GlobalScope.launch {
+                repositoryScope.launch {
                     friends.forEach { appDatabase.friendDao().insertFriend(it) }
                 }
             }

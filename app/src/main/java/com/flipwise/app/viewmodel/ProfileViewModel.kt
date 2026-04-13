@@ -49,6 +49,8 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     val friends: Flow<List<Friend>> = repository.getFriendsFlow()
 
+    val decks: Flow<List<Deck>> = repository.allDecks
+
     val challenges: Flow<List<Challenge>> = repository.getActiveChallenges()
     
     val recentSessions: Flow<List<StudySession>> = repository.sessions.map { it.take(5) }
@@ -59,13 +61,22 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     val isUserLoggedIn: Boolean 
         get() = repository.isUserLoggedIn()
 
+    fun isGoogleUser(): Boolean = repository.isGoogleUser()
+
     suspend fun updateProfile(displayName: String, username: String, bio: String, avatar: String): Result<Unit> {
         return try {
+            val trimmedUsername = username.trim().lowercase()
+            if (trimmedUsername != userProfile.value.username) {
+                if (repository.isUsernameTaken(trimmedUsername)) {
+                    return Result.failure(Exception("Username already taken"))
+                }
+            }
+
             val current = userProfile.value
             val profileToSave = current.copy(
                 id = repository.userId,
                 displayName = displayName, 
-                username = username, 
+                username = trimmedUsername, 
                 bio = bio, 
                 avatar = avatar
             )
@@ -75,6 +86,10 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    suspend fun isUsernameTaken(username: String): Boolean {
+        return repository.isUsernameTaken(username)
     }
 
     suspend fun syncProfile(): UserProfile? {
@@ -178,7 +193,19 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     fun removeFriend(friendId: String) {
         viewModelScope.launch { 
-            com.flipwise.app.data.database.AppDatabase.getDatabase(getApplication()).friendDao().deleteFriend(friendId) 
+            repository.declineFriendRequest(friendId)
+        }
+    }
+
+    fun acceptFriendRequest(friend: Friend) {
+        viewModelScope.launch {
+            repository.acceptFriendRequest(friend)
+        }
+    }
+
+    fun declineFriendRequest(friendId: String) {
+        viewModelScope.launch {
+            repository.declineFriendRequest(friendId)
         }
         logAction("FRIEND_REMOVED", "friendId=$friendId")
     }
@@ -188,4 +215,15 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             repository.addChallenge(challenge)
         }
     }
+
+    suspend fun updateTotpSecret(secret: String) {
+        val current = userProfile.value
+        repository.updateProfile(current.copy(totpSecret = secret))
+    }
+
+    val isTotpEnabled: Boolean
+        get() = userProfile.value.totpSecret != null
+
+    val currentUserEmail: String
+        get() = repository.currentUserEmail
 }

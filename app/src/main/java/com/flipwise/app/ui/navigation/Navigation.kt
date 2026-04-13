@@ -34,6 +34,12 @@ sealed class Screen(val route: String) {
     object ChallengeDetail : Screen("challenge/{challengeId}") {
         fun createRoute(challengeId: String) = "challenge/$challengeId"
     }
+    object ChallengeGame : Screen("challenge_game/{challengeId}") {
+        fun createRoute(challengeId: String) = "challenge_game/$challengeId"
+    }
+    object Otp : Screen("otp/{email}") {
+        fun createRoute(email: String) = "otp/$email"
+    }
 }
 
 @Composable
@@ -50,7 +56,8 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                 scope.launch {
                     if (profileViewModel.isUserLoggedIn) {
                         val profile = profileViewModel.syncProfile()
-                        if (profile == null || profile.username == "flipper" || profile.username.isBlank()) {
+                        val isGoogleUser = profileViewModel.isGoogleUser()
+                        if (isGoogleUser && (profile == null || profile.username == "flipper" || profile.username.isBlank())) {
                             navController.navigate(Screen.CompleteProfile.route) {
                                 popUpTo(Screen.Splash.route) { inclusive = true }
                             }
@@ -77,8 +84,13 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                 onLoginSuccess = {
                     scope.launch {
                         val profile = profileViewModel.fullSync()
-                        // Check if username (nickname) is set to default "flipper" or blank
-                        if (profile == null || profile.username == "flipper" || profile.username.isBlank()) {
+                        val isGoogleUser = profileViewModel.isGoogleUser()
+                        // Redirect existing email/password users to OTP
+                        if (!isGoogleUser) {
+                            navController.navigate(Screen.Otp.createRoute(profileViewModel.currentUserEmail)) {
+                                popUpTo(Screen.Login.route) { inclusive = true }
+                            }
+                        } else if (isGoogleUser && (profile == null || profile.username == "flipper" || profile.username.isBlank())) {
                             navController.navigate(Screen.CompleteProfile.route) {
                                 popUpTo(Screen.Login.route) { inclusive = true }
                             }
@@ -89,6 +101,22 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                         }
                     }
                 }
+            )
+        }
+
+        composable(
+            route = Screen.Otp.route,
+            arguments = listOf(navArgument("email") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email") ?: ""
+            OtpScreen(
+                email = email,
+                onVerifySuccess = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Otp.route) { inclusive = true }
+                    }
+                },
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -149,7 +177,8 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                     }
                 },
                 onNavigateToDecks = { navController.navigate(Screen.DeckList.route) },
-                onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                onNavigateToProfile = { navController.navigate(Screen.Profile.route) }
             )
         }
 
@@ -189,7 +218,10 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
         }
         
         composable(Screen.StudyTracker.route) { 
-            StudyTrackerScreen(onBack = { navController.popBackStack() }) 
+            StudyTrackerScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToDecks = { navController.navigate(Screen.DeckList.route) }
+            ) 
         }
 
         composable(Screen.Settings.route) {
@@ -197,6 +229,7 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
             SettingsScreen(
                 onBack = { navController.popBackStack() },
                 onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
+                onNavigateToOnboarding = { navController.navigate(Screen.Onboarding.route) },
                 onLogout = {
                     profileViewModel.signOut()
                     navController.navigate(Screen.Login.route) {
@@ -213,7 +246,8 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
 
         composable(Screen.Profile.route) {
             ProfileScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToChallengeGame = { id -> navController.navigate(Screen.ChallengeGame.createRoute(id)) }
             )
         }
 
@@ -227,6 +261,22 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
         ) { backStackEntry ->
             val id = backStackEntry.arguments?.getString("challengeId") ?: return@composable
             ChallengeDetailScreen(challengeId = id, onBack = { navController.popBackStack() })
+        }
+
+        composable(
+            route     = Screen.ChallengeGame.route,
+            arguments = listOf(navArgument("challengeId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("challengeId") ?: return@composable
+            ChallengeGameScreen(
+                challengeId = id,
+                onBack = { navController.popBackStack() },
+                onNavigateHome = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                }
+            )
         }
     }
 }

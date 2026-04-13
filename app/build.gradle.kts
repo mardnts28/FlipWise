@@ -51,7 +51,7 @@ android {
     }
 
     buildFeatures {
-        viewBinding = true
+        viewBinding = false
         compose = true
         buildConfig = true
     }
@@ -65,16 +65,13 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
-    implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.material:material:1.11.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    // implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.compose.material3.windowSizeClass)
+    implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.activity.compose)
@@ -103,8 +100,8 @@ dependencies {
     implementation(libs.firebase.database)
     implementation(libs.firebase.auth)
     implementation(libs.play.services.auth)
-    implementation(libs.firebase.firestore)
     implementation(libs.kotlinx.coroutines.play.services)
+    implementation("com.google.firebase:firebase-firestore-ktx")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -121,6 +118,14 @@ dependencies {
     // WorkManager for background notifications
     implementation("androidx.work:work-runtime-ktx:2.9.0")
 
+    // Google Play Integrity API for client attestation
+    implementation("com.google.android.play:integrity:1.3.0")
 
-    implementation("androidx.compose.material:material-icons-extended:1.6.0")
+    // QR Code generation for TOTP
+    implementation("com.google.zxing:core:3.5.3")
+
+    // Material Components for XML styles support
+    implementation(libs.google.material)
+
+
 }

@@ -9,9 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.ExitToApp
 import androidx.compose.material.icons.automirrored.rounded.Logout
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
@@ -22,12 +20,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flipwise.app.ui.theme.*
 import com.flipwise.app.viewmodel.DeckViewModel
 import com.flipwise.app.viewmodel.ProfileViewModel
 import kotlinx.coroutines.launch
-
+import androidx.compose.material.icons.rounded.*
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,6 +34,7 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     onBack: () -> Unit,
     onNavigateToProfile: () -> Unit = {},
+    onNavigateToOnboarding: () -> Unit = {},
     onLogout: () -> Unit = {},
     onAccountDeleted: () -> Unit = {},
     viewModel: DeckViewModel = viewModel(),
@@ -46,24 +46,24 @@ fun SettingsScreen(
     var deleteConfirmText by remember { mutableStateOf("") }
     val profile by profileViewModel.userProfile.collectAsState()
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    val context = androidx.compose.ui.platform.LocalContext.current
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(
-                        "Settings", 
+                        "Settings",
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 24.sp
-                    ) 
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack, 
+                            Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
                             tint = Color.White
                         )
@@ -188,17 +188,14 @@ fun SettingsScreen(
                         fontSize = 14.sp
                     )
                 }
-                
+
                 HorizontalDivider(color = GhostWhite, thickness = 1.dp)
 
                 DangerActionRow(
-                    icon = Icons.AutoMirrored.Rounded.ExitToApp,
+                    icon = Icons.Rounded.RestartAlt,
                     title = "Reset Onboarding",
                     description = "See the welcome tutorial again",
-                    onClick = { 
-                        viewModel.clearAllData()
-                        onBack()
-                    }
+                    onClick = { onNavigateToOnboarding() }
                 )
 
                 HorizontalDivider(color = GhostWhite, thickness = 1.dp, modifier = Modifier.padding(horizontal = 24.dp))
@@ -218,9 +215,9 @@ fun SettingsScreen(
                     iconColor = CherryRed,
                     title = "Delete Account",
                     description = "Permanently remove your account and data",
-                    onClick = { 
+                    onClick = {
                         deleteConfirmText = ""
-                        showDeleteConfirm = true 
+                        showDeleteConfirm = true
                     }
                 )
             }
@@ -264,7 +261,7 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Delete Account permanently?") },
-            text = { 
+            text = {
                 Column {
                     Text("This will permanently remove your account, profile, decks, and all study progress across all devices.")
                     Spacer(Modifier.height(16.dp))

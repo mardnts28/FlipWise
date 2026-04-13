@@ -51,7 +51,8 @@ data class Achievement(
     val icon: String,
     val category: String = "All",
     val unlockedAt: Long? = null,
-    val isUnlocked: Boolean = false
+    val isUnlocked: Boolean = false,
+    val tier: String = "bronze" // "bronze", "silver", "gold"
 )
 
 data class UserProgress(
@@ -61,13 +62,6 @@ data class UserProgress(
     val totalCardsStudied: Int = 0,
     val lastStudyDate: Long? = null
 )
-
-data class UserStats(
-    val totalPoints: Int = 0,
-    val totalCardsStudied: Int = 0,
-    val currentStreak: Int = 0
-)
-
 @Parcelize
 @Entity(tableName = "user_profile")
 data class UserProfile(
@@ -80,7 +74,9 @@ data class UserProfile(
     val level: Int = 1,
     val xp: Int = 0,
     val totalPoints: Int = 0,
-    val badges: String = ""
+    val badges: String = "",
+    val role: String = "standard",
+    val totpSecret: String? = null
 ) : Parcelable
 
 @Parcelize
@@ -104,14 +100,17 @@ data class Challenge(
     @PrimaryKey val id: String,
     val name: String,
     val description: String,
-    val type: String,
-    val goal: Int,
-    val goalType: String,
-    val startDate: Long,
-    val endDate: Long,
-    val status: String,
-    val createdBy: String,
-    val participants: String
+    val type: String, // "versus" or "team"
+    val subType: String = "1v1", // "1v1" or "team_vs_team"
+    val goal: Int = 0,
+    val goalType: String = "Score",
+    val timeLimit: Int = 300, // Seconds, default 5 mins
+    val startDate: Long = System.currentTimeMillis(),
+    val endDate: Long = System.currentTimeMillis() + 86400000,
+    val status: String = "active",
+    val createdBy: String = "local_user",
+    val participants: String = "local_user", // Comma-separated user IDs
+    val deckIds: String = "" // Comma-separated deck IDs
 ) : Parcelable
 
 sealed class AiGenerationState {

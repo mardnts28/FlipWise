@@ -35,6 +35,7 @@ fun CompleteProfileScreen(
     var nickname by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
+    val dimensions = FlipWiseDesign.dimensions
     val scope = rememberCoroutineScope()
 
     Box(
@@ -84,29 +85,30 @@ fun CompleteProfileScreen(
             Text(
                 text = "One Last Step!",
                 color = NavyInk,
-                fontSize = 32.sp,
+                fontSize = dimensions.titleFontSize,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = "Pick a nickname to start your journey",
                 color = NavyInk.copy(alpha = 0.6f),
-                fontSize = 18.sp,
-                modifier = Modifier.padding(top = 8.dp)
+                fontSize = dimensions.bodyFontSize,
+                modifier = Modifier.padding(top = dimensions.paddingSmall)
             )
 
             Spacer(modifier = Modifier.height(48.dp))
 
             Surface(
                 modifier = Modifier
+                    .widthIn(max = 600.dp)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(32.dp)),
+                    .clip(RoundedCornerShape(dimensions.cardCornerRadius)),
                 color = Color.White.copy(alpha = 0.8f),
                 border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.6f)),
                 shadowElevation = 0.dp
             ) {
                 Column(
-                    modifier = Modifier.padding(32.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                    modifier = Modifier.padding(dimensions.paddingLarge),
+                    verticalArrangement = Arrangement.spacedBy(dimensions.paddingLarge)
                 ) {
                     AnimatedVisibility(visible = error != null) {
                         Text(text = error ?: "", color = Color.Red, fontSize = 14.sp)
@@ -132,29 +134,38 @@ fun CompleteProfileScreen(
                         onClick = {
                             if (nickname.isBlank()) {
                                 error = "Please enter a nickname"
+                            } else if (!"^[a-zA-Z0-9_]{3,20}$".toRegex().matches(nickname.trim())) {
+                                error = "Nickname must be 3-20 characters and only contain letters, numbers, or underscores"
                             } else {
-                                isLoading = true
-                                scope.launch {
-                                    val profile = profileViewModel.userProfile.value
-                                    val result = profileViewModel.updateProfile(
-                                        displayName = profile.displayName,
-                                        username = nickname,
-                                        bio = profile.bio,
-                                        avatar = profile.avatar
-                                    )
-                                    isLoading = false
-                                    if (result.isSuccess) {
-                                        onComplete()
-                                    } else {
-                                        error = "Failed to save profile: ${result.exceptionOrNull()?.message}"
+                                    isLoading = true
+                                    error = null
+                                    scope.launch {
+                                        if (profileViewModel.isUsernameTaken(nickname.trim())) {
+                                            error = "Username is already taken. Please pick another one."
+                                            isLoading = false
+                                            return@launch
+                                        }
+
+                                        val profile = profileViewModel.userProfile.value
+                                        val result = profileViewModel.updateProfile(
+                                            displayName = profile.displayName,
+                                            username = nickname,
+                                            bio = profile.bio,
+                                            avatar = profile.avatar
+                                        )
+                                        isLoading = false
+                                        if (result.isSuccess) {
+                                            onComplete()
+                                        } else {
+                                            error = "Failed to save profile: ${result.exceptionOrNull()?.message}"
+                                        }
                                     }
-                                }
                             }
                         },
                         enabled = !isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(64.dp),
+                            .height(dimensions.buttonHeight),
                         shape = RoundedCornerShape(20.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                         contentPadding = PaddingValues()

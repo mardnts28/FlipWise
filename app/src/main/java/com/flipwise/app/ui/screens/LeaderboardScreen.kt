@@ -31,6 +31,7 @@ import com.flipwise.app.data.model.UserProfile
 import com.flipwise.app.ui.components.CreateGoalDialog
 import com.flipwise.app.ui.theme.*
 import com.flipwise.app.viewmodel.ProfileViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,9 +41,36 @@ fun LeaderboardScreen(
 ) {
     val leaderboard by viewModel.leaderboard.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
+    val decks by viewModel.decks.collectAsState(initial = emptyList())
+    
+    var showGoalDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    if (showGoalDialog) {
+        CreateGoalDialog(
+            decks = decks,
+            onDismiss = { showGoalDialog = false },
+            onCreate = { goal ->
+                scope.launch {
+                    viewModel.addChallenge(goal)
+                    showGoalDialog = false
+                }
+            }
+        )
+    }
 
     Scaffold(
-        containerColor = GhostWhite
+        containerColor = GhostWhite,
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = { showGoalDialog = true },
+                containerColor = GrapePop,
+                contentColor = Color.White,
+                shape = RoundedCornerShape(20.dp),
+                icon = { Icon(Icons.Rounded.Flag, "Add Goal") },
+                text = { Text("Set Goal") }
+            )
+        }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -83,7 +111,12 @@ fun LeaderboardScreen(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 2.sp
                         )
-                        Box(modifier = Modifier.size(40.dp))
+                        IconButton(
+                            onClick = { showGoalDialog = true },
+                            modifier = Modifier.background(Color.White.copy(alpha = 0.2f), CircleShape)
+                        ) {
+                            Icon(Icons.Rounded.Add, contentDescription = "Add Goal", tint = Color.White)
+                        }
                     }
 
                     Spacer(Modifier.height(16.dp))
