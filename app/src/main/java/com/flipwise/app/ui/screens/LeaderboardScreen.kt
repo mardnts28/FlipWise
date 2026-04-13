@@ -37,7 +37,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun LeaderboardScreen(
     onBack: () -> Unit,
-    viewModel: ProfileViewModel = viewModel()
+    viewModel: ProfileViewModel = viewModel(),
+    deckViewModel: com.flipwise.app.viewmodel.DeckViewModel = viewModel()
 ) {
     val leaderboard by viewModel.leaderboard.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
@@ -45,6 +46,7 @@ fun LeaderboardScreen(
     val friends by viewModel.friends.collectAsState(initial = emptyList())
     val challenges by viewModel.challenges.collectAsState(initial = emptyList())
     val allSessions by viewModel.allSessions.collectAsState(initial = emptyList())
+    val progress by deckViewModel.userProgress.collectAsState()
     
     var showGoalDialog by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(0) } // 0: Global, 1: Friends, 2: Goals
@@ -204,7 +206,7 @@ fun LeaderboardScreen(
                                     val currentProgress = when(goal.goalType) {
                                         "Cards Studied" -> allSessions.filter { it.date >= goal.startDate }.sumOf { it.cardsStudied }
                                         "Points Earned" -> allSessions.filter { it.date >= goal.startDate }.sumOf { it.pointsEarned }
-                                        "Streak Days" -> userProfile.currentStreak // Can't easily bound this, so current streak works
+                                        "Streak Days" -> progress.currentStreak // Bounded by current streak
                                         else -> 0
                                     }
                                     
