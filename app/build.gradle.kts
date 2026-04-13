@@ -101,6 +101,7 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.play.services.auth)
     implementation(libs.kotlinx.coroutines.play.services)
+    implementation("com.google.firebase:firebase-firestore-ktx")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -119,10 +120,12 @@ dependencies {
 
     // Google Play Integrity API for client attestation
     implementation("com.google.android.play:integrity:1.3.0")
-    
+
     // QR Code generation for TOTP
     implementation("com.google.zxing:core:3.5.3")
 
     // Material Components for XML styles support
     implementation(libs.google.material)
+
+
 }

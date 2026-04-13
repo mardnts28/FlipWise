@@ -6,6 +6,7 @@ import com.flipwise.app.data.model.*
 import net.sqlcipher.database.SQLiteDatabase
 import net.sqlcipher.database.SupportFactory
 
+
 @Database(
     entities = [
         Deck::class,
@@ -14,9 +15,10 @@ import net.sqlcipher.database.SupportFactory
         Achievement::class,
         UserProfile::class,
         Friend::class,
-        Challenge::class
+        Challenge::class,
+        AuditLog::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -27,14 +29,15 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun profileDao(): ProfileDao
     abstract fun friendDao(): FriendDao
     abstract fun challengeDao(): ChallengeDao
+    abstract fun auditLogDao(): AuditLogDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
 
+
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
-                // For a production app, you should securely generate this key 
-                // and store it in the Android Keystore rather than hardcoding it.
                 val passphrase = SQLiteDatabase.getBytes("flipwise-secure-v1-key".toCharArray())
                 val factory = SupportFactory(passphrase)
 
@@ -43,10 +46,11 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "flipwise_database"
                 )
-                .openHelperFactory(factory) // Enable encryption
-                .fallbackToDestructiveMigration()
-                .build()
-                .also { INSTANCE = it }
+                    .openHelperFactory(factory)
+
+                    .fallbackToDestructiveMigration()
+                    .build()
+                    .also { INSTANCE = it }
             }
         }
     }

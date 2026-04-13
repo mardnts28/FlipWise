@@ -12,6 +12,7 @@ import com.flipwise.app.data.model.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
+import com.flipwise.app.data.security.RateLimiter
 
 import com.flipwise.app.data.repository.FlipWiseRepository
 import com.flipwise.app.data.ai.GeminiStudyCoach
@@ -24,6 +25,7 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
     private val cardDao = db.flashcardDao()
     private val achievementDao = db.achievementDao()
     private val sessionDao = db.studySessionDao()
+    private val auditLogDao = db.auditLogDao()
 
     val decks: Flow<List<Deck>>               = repository.allDecks
     val achievements: Flow<List<Achievement>> = AppDatabase.getDatabase(application).achievementDao().getAllAchievements()
@@ -200,6 +202,7 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
             repository.createDeck(
                 Deck(id = UUID.randomUUID().toString(), name = name, subject = subject, color = color, icon = icon)
             )
+            logAction("DECK_CREATED", "name=$name")
         }
     }
 
@@ -212,6 +215,7 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteDeck(deckId: String) {
         viewModelScope.launch {
             repository.deleteDeck(deckId)
+            logAction("DECK_DELETED", "deckId=$deckId")
         }
     }
 
@@ -251,6 +255,7 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
         val points = correctCount * 10 + (cardsStudied - correctCount) * 5
         viewModelScope.launch {
             repository.saveSession(
+
                 StudySession(
                     deckId       = deckId,
                     cardsStudied = cardsStudied,
@@ -258,6 +263,7 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
                     pointsEarned = points
                 )
             )
+            logAction("STUDY_SESSION", "deckId=$deckId cards=$cardsStudied correct=$correctCount points=$points")
             
             // Update User Profile with new XP and Points
             val currentProfile = repository.userProfile.firstOrNull() ?: UserProfile()
@@ -332,6 +338,7 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearAllData() {
         viewModelScope.launch {
+            logAction("CLEAR_ALL_DATA", "all local data wiped")
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 db.clearAllTables()
             }
@@ -342,6 +349,11 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
     // ─── AI Flashcard Generation ─────────────────────────────────
 
     fun generateFlashcardsFromFile(deckId: String, fileUri: Uri) {
+        // Max 3 AI generations per minute
+        if (!RateLimiter.isAllowed("AI_GENERATE", maxCount = 3, windowMs = 60 * 1000)) {
+            _aiGenerationState.value = AiGenerationState.Error("Too many requests. Please wait a moment.")
+            return
+        }
         viewModelScope.launch {
             _aiGenerationState.value = AiGenerationState.Loading("Reading file...")
 
@@ -492,5 +504,31 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         return longest
+    }
+    private fun logAction(action: String, details: String = "") {
+        viewModelScope.launch {
+            val uid = try {
+                com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "anonymous"
+            } catch (e: Exception) { "anonymous" }
+
+            // Save locally to Room
+            auditLogDao.log(AuditLog(userId = uid, action = action, details = details))
+
+            // Save to Firebase Firestore (cloud)
+            try {
+                com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    .collection("audit_logs")
+                    .add(mapOf(
+                        "userId" to uid,
+                        "action" to action,
+                        "details" to details,
+                        "timestamp" to System.currentTimeMillis()
+                    ))
+            } catch (e: Exception) {
+                android.util.Log.e("AUDIT_LOG", "Failed to save to Firestore: ${e.message}")
+            }
+
+            android.util.Log.d("AUDIT_LOG", "✅ Logged: $action | $details")
+        }
     }
 }

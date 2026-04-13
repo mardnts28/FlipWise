@@ -117,3 +117,13 @@ interface ChallengeDao {
     @Query("DELETE FROM challenges WHERE id = :challengeId")
     suspend fun deleteChallenge(challengeId: String)
 }
+@Dao
+interface AuditLogDao {
+    @Insert
+    suspend fun log(entry: AuditLog)
+
+    @Query("SELECT * FROM audit_logs ORDER BY timestamp DESC")
+    fun getAllLogs(): Flow<List<AuditLog>>
+
+    // intentionally no delete or update — append only
+}

@@ -28,6 +28,7 @@ import com.flipwise.app.viewmodel.ProfileViewModel
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.rounded.*
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -51,18 +52,18 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(
-                        "Settings", 
+                        "Settings",
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 24.sp
-                    ) 
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack, 
+                            Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
                             tint = Color.White
                         )
@@ -119,9 +120,13 @@ fun SettingsScreen(
                 trailingContent = {
                     Switch(
                         checked = notificationsOn,
-                        onCheckedChange = { 
-                            notificationsOn = it 
-                            // Notifications worker scheduling removed for stability
+                        onCheckedChange = {
+                            notificationsOn = it
+                            if (it) {
+                                com.flipwise.app.data.worker.StudyReminderWorker.schedule(context)
+                            } else {
+                                com.flipwise.app.data.worker.StudyReminderWorker.cancel(context)
+                            }
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
@@ -183,16 +188,14 @@ fun SettingsScreen(
                         fontSize = 14.sp
                     )
                 }
-                
+
                 HorizontalDivider(color = GhostWhite, thickness = 1.dp)
 
                 DangerActionRow(
                     icon = Icons.Rounded.RestartAlt,
                     title = "Reset Onboarding",
                     description = "See the welcome tutorial again",
-                    onClick = { 
-                        onNavigateToOnboarding()
-                    }
+                    onClick = { onNavigateToOnboarding() }
                 )
 
                 HorizontalDivider(color = GhostWhite, thickness = 1.dp, modifier = Modifier.padding(horizontal = 24.dp))
@@ -212,9 +215,9 @@ fun SettingsScreen(
                     iconColor = CherryRed,
                     title = "Delete Account",
                     description = "Permanently remove your account and data",
-                    onClick = { 
+                    onClick = {
                         deleteConfirmText = ""
-                        showDeleteConfirm = true 
+                        showDeleteConfirm = true
                     }
                 )
             }
@@ -258,7 +261,7 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Delete Account permanently?") },
-            text = { 
+            text = {
                 Column {
                     Text("This will permanently remove your account, profile, decks, and all study progress across all devices.")
                     Spacer(Modifier.height(16.dp))

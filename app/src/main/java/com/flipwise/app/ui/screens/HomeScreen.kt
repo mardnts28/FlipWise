@@ -40,10 +40,10 @@ fun HomeScreen(
     val friends by profileViewModel.friends.collectAsState(initial = emptyList())
     val profile by profileViewModel.userProfile.collectAsState()
     val dimensions = FlipWiseDesign.dimensions
-    
+
     var showCreateDialog by remember { mutableStateOf(false) }
     var showFriendNotification by remember { mutableStateOf(false) }
-    
+
     val pendingRequests = remember(friends) {
         friends.filter { it.status == "pending" }
     }
@@ -69,7 +69,12 @@ fun HomeScreen(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(bottomStart = dimensions.cardCornerRadius, bottomEnd = dimensions.cardCornerRadius)),
+                .clip(
+                    RoundedCornerShape(
+                        bottomStart = dimensions.cardCornerRadius,
+                        bottomEnd = dimensions.cardCornerRadius
+                    )
+                ),
             color = Color(0xFF7C3AED)
         ) {
             Column(
@@ -83,7 +88,8 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val greeting = remember {
-                        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+                        val hour =
+                            java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
                         when (hour) {
                             in 0..11 -> "Good Morning!"
                             in 12..16 -> "Good Afternoon!"
@@ -97,7 +103,11 @@ fun HomeScreen(
                         color = Color.White
                     )
                     IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color.White)
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = Color.White
+                        )
                     }
                 }
                 Text(
@@ -105,9 +115,9 @@ fun HomeScreen(
                     fontSize = dimensions.bodyFontSize,
                     color = Color.White.copy(alpha = 0.8f)
                 )
-                
+
                 Spacer(Modifier.height(32.dp))
-                
+
                 // Stats Card inside Header
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
@@ -124,18 +134,37 @@ fun HomeScreen(
                             color = Color(0xFFFBBF24)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Whatshot, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
+                                Icon(
+                                    Icons.Default.Whatshot,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(32.dp)
+                                )
                             }
                         }
                         Spacer(Modifier.width(16.dp))
                         Column {
-                            Text("Current Streak", fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f))
-                            Text("${progress.currentStreak} days", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text(
+                                "Current Streak",
+                                fontSize = 14.sp,
+                                color = Color.White.copy(alpha = 0.8f)
+                            )
+                            Text(
+                                "${progress.currentStreak} days",
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
                         }
                         Spacer(Modifier.weight(1f))
                         Column(horizontalAlignment = Alignment.End) {
                             Text("Points", fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f))
-                            Text(progress.totalPoints.toString(), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text(
+                                progress.totalPoints.toString(),
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
                         }
                     }
                 }
@@ -160,7 +189,12 @@ fun HomeScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Cards Studied", fontSize = 14.sp, color = Color.Gray)
-                    Text(progress.totalCardsStudied.toString(), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF3F3D56))
+                    Text(
+                        progress.totalCardsStudied.toString(),
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF3F3D56)
+                    )
                 }
             }
             Surface(
@@ -172,7 +206,12 @@ fun HomeScreen(
                 val totalMastered = decks.sumOf { it.masteredCount }
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Cards Mastered", fontSize = 14.sp, color = Color.Gray)
-                    Text("$totalMastered", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF10B981))
+                    Text(
+                        "$totalMastered",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF10B981)
+                    )
                 }
             }
         }
@@ -184,11 +223,19 @@ fun HomeScreen(
                 .fillMaxWidth()
                 .padding(horizontal = dimensions.paddingLarge)
         ) {
-            Text("Quick Actions", fontSize = dimensions.headerFontSize, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+            Text(
+                "Quick Actions",
+                fontSize = dimensions.headerFontSize,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1E1B4B)
+            )
             Spacer(Modifier.height(dimensions.paddingMedium))
-            
+
             if (dimensions.isTablet) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(dimensions.paddingMedium)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(dimensions.paddingMedium)
+                ) {
                     QuickActionCard(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Default.Book,
@@ -215,7 +262,10 @@ fun HomeScreen(
                     )
                 }
             } else {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
                     QuickActionCard(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Default.Book,
@@ -256,12 +306,22 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Recent Decks", fontSize = dimensions.headerFontSize, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+            Text(
+                "Recent Decks",
+                fontSize = dimensions.headerFontSize,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1E1B4B)
+            )
             TextButton(onClick = onNavigateToDecks) {
-                Text("View All", color = Color(0xFF7C3AED), fontWeight = FontWeight.Bold, fontSize = dimensions.bodyFontSize)
+                Text(
+                    "View All",
+                    color = Color(0xFF7C3AED),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = dimensions.bodyFontSize
+                )
             }
         }
-        
+
         Column(
             modifier = Modifier
                 .widthIn(max = 1200.dp)
@@ -270,7 +330,11 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(dimensions.paddingSmall)
         ) {
             if (recentDecks.isEmpty()) {
-                Text("Your decks will appear here.", color = Color.Gray, modifier = Modifier.padding(8.dp))
+                Text(
+                    "Your decks will appear here.",
+                    color = Color.Gray,
+                    modifier = Modifier.padding(8.dp)
+                )
             } else {
                 recentDecks.forEach { deck ->
                     RecentDeckItem(deck = deck, onClick = { onNavigateToDeck(deck.id) })
@@ -285,7 +349,7 @@ fun HomeScreen(
         AlertDialog(
             onDismissRequest = { showFriendNotification = false },
             title = { Text("New Friend Request! \uD83D\uDC4B") },
-            text = { 
+            text = {
                 Text("${firstRequest.displayName} (@${firstRequest.username}) wants to be friends on FlipWise!")
             },
             confirmButton = {
@@ -319,7 +383,6 @@ fun HomeScreen(
         )
     }
 }
-
 @Composable
 fun RecentDeckItem(deck: Deck, onClick: () -> Unit) {
     Surface(
