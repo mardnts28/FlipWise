@@ -41,6 +41,7 @@ fun CreateChallengeDialog(
     var timerMinutes by remember { mutableStateOf("5") }
     var selectedFriendIds by remember { mutableStateOf(setOf<String>()) }
     var selectedDeckIds by remember { mutableStateOf(setOf<String>()) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -167,6 +168,21 @@ fun CreateChallengeDialog(
                         }
                     }
                 }
+                
+                if (errorMessage != null) {
+                    Spacer(Modifier.height(16.dp))
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFFEE2E2)
+                    ) {
+                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Timer, contentDescription = null, tint = Color(0xFFEF4444), modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(errorMessage!!, color = Color(0xFF991B1B), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
 
                 Spacer(Modifier.height(32.dp))
 
@@ -180,6 +196,12 @@ fun CreateChallengeDialog(
                     }
                     Button(
                         onClick = {
+                            val emptyDecks = selectedDeckIds.filter { id -> decks.find { it.id == id }?.cardCount == 0 }
+                            if (emptyDecks.isNotEmpty()) {
+                                errorMessage = "Cannot start battle. Some selected decks have NO flashcards."
+                                return@Button
+                            }
+                            errorMessage = null
                             val timeLimit = (timerMinutes.toIntOrNull() ?: 5) * 60
                             onCreate(Challenge(
                                 id = UUID.randomUUID().toString(),

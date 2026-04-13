@@ -56,6 +56,9 @@ interface StudySessionDao {
 
     @Query("SELECT * FROM study_sessions WHERE date >= :startDate")
     suspend fun getSessionsSince(startDate: Long): List<StudySession>
+
+    @Query("SELECT * FROM study_sessions ORDER BY date DESC")
+    suspend fun getAllSessionsOnce(): List<StudySession>
 }
 
 @Dao

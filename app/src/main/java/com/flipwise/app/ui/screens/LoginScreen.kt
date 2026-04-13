@@ -343,78 +343,79 @@ fun LoginScreen(
                         }
                     }
 
-                    // Submit Button
-                    Button(
-                        onClick = {
-                            focusManager.clearFocus()
-                            if (email.isBlank() || password.isBlank()) {
-                                error = "Please fill in all fields"
-                                successMessage = null
-                            } else if (!email.contains("@")) {
-                                error = "Please enter a valid email"
-                                successMessage = null
-                            } else {
-                                isLoading = true
-                                error = null
-                                successMessage = null
-                                scope.launch {
-                                    val result = profileViewModel.signIn(email, password)
-                                    isLoading = false
-                                    if (result.isSuccess) {
-                                        onLoginSuccess()
-                                    } else {
-                                        val ex = result.exceptionOrNull()
-                                        error = when (ex) {
-                                            is com.google.firebase.auth.FirebaseAuthInvalidUserException -> "This account does not exist in our system."
-                                            is com.google.firebase.auth.FirebaseAuthInvalidCredentialsException -> "The email address or password provided is incorrect."
-                                            else -> result.exceptionOrNull()?.message ?: "Login failed"
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        // Submit Button
+                        Button(
+                            onClick = {
+                                focusManager.clearFocus()
+                                if (email.isBlank() || password.isBlank()) {
+                                    error = "Please fill in all fields"
+                                    successMessage = null
+                                } else if (!email.contains("@")) {
+                                    error = "Please enter a valid email"
+                                    successMessage = null
+                                } else {
+                                    isLoading = true
+                                    error = null
+                                    successMessage = null
+                                    scope.launch {
+                                        val result = profileViewModel.signIn(email, password)
+                                        isLoading = false
+                                        if (result.isSuccess) {
+                                            onLoginSuccess()
+                                        } else {
+                                            val ex = result.exceptionOrNull()
+                                            error = when (ex) {
+                                                is com.google.firebase.auth.FirebaseAuthInvalidUserException -> "This account does not exist in our system."
+                                                is com.google.firebase.auth.FirebaseAuthInvalidCredentialsException -> "The email address or password provided is incorrect."
+                                                else -> result.exceptionOrNull()?.message ?: "Login failed"
+                                            }
                                         }
                                     }
                                 }
-                            }
-                        },
-                        enabled = !isLoading,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(dimensions.buttonHeight),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Transparent
-                        ),
-                        contentPadding = PaddingValues()
-                    ) {
-                        Box(
+                            },
+                            enabled = !isLoading,
                             modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    Brush.horizontalGradient(
-                                        listOf(GrapePop, Color(0xFF8B5CF6), Color(0xFF9333EA))
-                                    )
-                                ),
-                            contentAlignment = Alignment.Center
+                                .fillMaxWidth()
+                                .height(dimensions.buttonHeight),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Transparent
+                            ),
+                            contentPadding = PaddingValues()
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(GrapePop, Color(0xFF8B5CF6), Color(0xFF9333EA))
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = "Sign In",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = "Sign In",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                             }
                         }
-                    }
 
-                    // --- Google One-Tap Sign-In ---
+                        // --- Google One-Tap Sign-In ---
                     val context = androidx.compose.ui.platform.LocalContext.current
                     val googleLauncher = rememberLauncherForActivityResult(
                         contract = ActivityResultContracts.StartActivityForResult()
@@ -451,26 +452,25 @@ fun LoginScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    OutlinedButton(
-                        onClick = {
-                            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                                .requestIdToken("307290224469-gf0osk7odpkmvuo3t8tmbfhh1s8b6am3.apps.googleusercontent.com")
-                                .requestEmail()
-                                .build()
-                            val client = GoogleSignIn.getClient(context, gso)
-                            googleLauncher.launch(client.signInIntent)
-                        },
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                        shape = RoundedCornerShape(20.dp),
-                        border = BorderStroke(1.dp, NavyInk.copy(alpha = 0.1f)),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = NavyInk)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("G", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = Color(0xFF4285F4))
-                            Spacer(Modifier.width(12.dp))
-                            Text("Sign in with Google", fontWeight = FontWeight.Bold)
+                        OutlinedButton(
+                            onClick = {
+                                val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                                    .requestIdToken("307290224469-gf0osk7odpkmvuo3t8tmbfhh1s8b6am3.apps.googleusercontent.com")
+                                    .requestEmail()
+                                    .build()
+                                val client = GoogleSignIn.getClient(context, gso)
+                                googleLauncher.launch(client.signInIntent)
+                            },
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape = RoundedCornerShape(20.dp),
+                            border = BorderStroke(1.dp, NavyInk.copy(alpha = 0.1f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NavyInk)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("G", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = Color(0xFF4285F4))
+                                Spacer(Modifier.width(12.dp))
+                                Text("Sign in with Google", fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }

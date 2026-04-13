@@ -146,7 +146,7 @@ fun StudyModeScreen(
                 modifier = Modifier
                     .padding(horizontal = 32.dp)
                     .fillMaxWidth()
-                    .height(400.dp) // Fixed height to avoid weight issues in scroll
+                    .height(if (isMultipleChoice) 200.dp else 400.dp)
                     .graphicsLayer {
                         rotationY = if (isMultipleChoice) 0f else rotation
                         cameraDistance = 12f * density
@@ -178,8 +178,8 @@ fun StudyModeScreen(
             Spacer(Modifier.height(32.dp))
 
             Surface(
-                modifier = Modifier.fillMaxWidth().fillMaxHeight(),
-                shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
+                modifier = Modifier.fillMaxWidth().wrapContentHeight().padding(bottom = 24.dp),
+                shape = RoundedCornerShape(40.dp),
                 color = Color.White,
                 shadowElevation = 16.dp
             ) {
@@ -444,10 +444,10 @@ fun StudySummaryContent(
                 HorizontalDivider(color = Color(0xFFF3F4F6))
                 Spacer(Modifier.height(16.dp))
                 
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                    SummaryItem("$easyCount", "Easy", Color(0xFF10B981))
-                    SummaryItem("$hardCount", "Hard", Color(0xFFF97316))
-                    SummaryItem("$forgotCount", "Forgot", Color(0xFFF43F5E))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    SummaryItem("$easyCount", "Easy", Color(0xFF10B981), Modifier.weight(1f))
+                    SummaryItem("$hardCount", "Hard", Color(0xFFF97316), Modifier.weight(1f))
+                    SummaryItem("$forgotCount", "Forgot", Color(0xFFF43F5E), Modifier.weight(1f))
                 }
             }
         }
@@ -539,8 +539,8 @@ fun StudySummaryContent(
 }
 
 @Composable
-fun SummaryItem(value: String, label: String, color: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+fun SummaryItem(value: String, label: String, color: Color, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Surface(modifier = Modifier.size(40.dp), shape = CircleShape, color = color) {
             Box(contentAlignment = Alignment.Center) {
                 Text(value, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
