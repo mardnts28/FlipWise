@@ -8,11 +8,11 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 @Entity(tableName = "decks")
 data class Deck(
-    @PrimaryKey val id: String,
-    val name: String,
+    @PrimaryKey val id: String = "",
+    val name: String = "",
     val subject: String = "",
-    val color: String,
-    val icon: String,
+    val color: String = "",
+    val icon: String = "",
     val createdAt: Long = System.currentTimeMillis(),
     val lastStudied: Long? = null,
     val cardCount: Int = 0,
@@ -22,10 +22,10 @@ data class Deck(
 @Parcelize
 @Entity(tableName = "flashcards")
 data class Flashcard(
-    @PrimaryKey val id: String,
-    val deckId: String,
-    val front: String,
-    val back: String,
+    @PrimaryKey val id: String = "",
+    val deckId: String = "",
+    val front: String = "",
+    val back: String = "",
     val options: String? = null, // Pipe-separated choices
     val difficulty: String = "medium",
     val nextReview: Long = System.currentTimeMillis(),
@@ -36,19 +36,19 @@ data class Flashcard(
 @Entity(tableName = "study_sessions")
 data class StudySession(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val deckId: String,
+    val deckId: String = "",
     val date: Long = System.currentTimeMillis(),
-    val cardsStudied: Int,
-    val correctCount: Int,
-    val pointsEarned: Int
+    val cardsStudied: Int = 0,
+    val correctCount: Int = 0,
+    val pointsEarned: Int = 0
 )
 
 @Entity(tableName = "achievements")
 data class Achievement(
-    @PrimaryKey val id: String,
-    val title: String,
-    val description: String,
-    val icon: String,
+    @PrimaryKey val id: String = "",
+    val title: String = "",
+    val description: String = "",
+    val icon: String = "",
     val category: String = "All",
     val unlockedAt: Long? = null,
     val isUnlocked: Boolean = false,
@@ -82,25 +82,25 @@ data class UserProfile(
 @Parcelize
 @Entity(tableName = "friends")
 data class Friend(
-    @PrimaryKey val id: String,
-    val userId: String,
-    val username: String,
-    val displayName: String,
-    val avatar: String,
-    val status: String,
-    val addedAt: Long,
-    val totalPoints: Int,
-    val currentStreak: Int,
-    val totalCardsStudied: Int
+    @PrimaryKey val id: String = "",
+    val userId: String = "",
+    val username: String = "",
+    val displayName: String = "",
+    val avatar: String = "",
+    val status: String = "",
+    val addedAt: Long = System.currentTimeMillis(),
+    val totalPoints: Int = 0,
+    val currentStreak: Int = 0,
+    val totalCardsStudied: Int = 0
 ) : Parcelable
 
 @Parcelize
 @Entity(tableName = "challenges")
 data class Challenge(
-    @PrimaryKey val id: String,
-    val name: String,
-    val description: String,
-    val type: String, // "versus" or "team"
+    @PrimaryKey val id: String = "",
+    val name: String = "",
+    val description: String = "",
+    val type: String = "", // "versus" or "team"
     val subType: String = "1v1", // "1v1" or "team_vs_team"
     val goal: Int = 0,
     val goalType: String = "Score",
