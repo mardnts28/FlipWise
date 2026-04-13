@@ -55,7 +55,7 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
             SplashScreen(onNavigateNext = {
                 scope.launch {
                     if (profileViewModel.isUserLoggedIn) {
-                        val profile = profileViewModel.syncProfile()
+                        val profile = profileViewModel.fullSync()
                         val isGoogleUser = profileViewModel.isGoogleUser()
                         if (isGoogleUser && (profile == null || profile.username == "flipper" || profile.username.isBlank())) {
                             navController.navigate(Screen.CompleteProfile.route) {
