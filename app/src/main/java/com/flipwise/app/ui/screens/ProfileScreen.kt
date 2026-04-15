@@ -57,6 +57,15 @@ fun ProfileScreen(
     var showAddFriend by remember { mutableStateOf(false) }
     var showAddChallenge by remember { mutableStateOf(false) }
     var showEditProfile by remember { mutableStateOf(false) }
+    var friendMessage by remember { mutableStateOf<String?>(null) }
+
+    // Show a snackbar for friend add feedback
+    LaunchedEffect(friendMessage) {
+        friendMessage?.let {
+            kotlinx.coroutines.delay(3000)
+            friendMessage = null
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -329,10 +338,43 @@ fun ProfileScreen(
             AddFriendStyledDialog(
                 onDismiss = { showAddFriend = false },
                 onAdd = { username ->
-                    viewModel.addFriend(username)
+                    scope.launch {
+                        val result = viewModel.addFriend(username)
+                        if (result.isSuccess) {
+                            friendMessage = "Friend request sent!"
+                        } else {
+                            friendMessage = result.exceptionOrNull()?.message ?: "Failed to add friend"
+                        }
+                    }
                     showAddFriend = false
                 }
             )
+        }
+
+        // Friend feedback message banner
+        friendMessage?.let { msg ->
+            androidx.compose.animation.AnimatedVisibility(
+                visible = true,
+                enter = androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.fadeOut()
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (msg.contains("sent")) Color(0xFF10B981) else Color(0xFFEF4444),
+                    shadowElevation = 4.dp
+                ) {
+                    Text(
+                        text = msg,
+                        modifier = Modifier.padding(16.dp),
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
         }
     }
 

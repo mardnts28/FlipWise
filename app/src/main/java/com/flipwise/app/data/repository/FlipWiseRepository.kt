@@ -338,7 +338,7 @@ class FlipWiseRepository(context: Context) {
         return try {
             val snapshot = remoteDatabase.child("leaderboard")
                 .orderByChild("username")
-                .equalTo(username.trim())
+                .equalTo(username.trim().lowercase())
                 .limitToFirst(1)
                 .get()
                 .await()

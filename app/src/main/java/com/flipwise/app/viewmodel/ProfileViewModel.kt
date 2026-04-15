@@ -192,17 +192,24 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         return repository.deleteAccount()
     }
 
-    fun addFriend(username: String) {
+    suspend fun addFriend(username: String): Result<Unit> {
         val trimmed = username.trim()
-        if (trimmed.isBlank()) return
+        if (trimmed.isBlank()) return Result.failure(Exception("Username cannot be empty"))
         
-        viewModelScope.launch {
+        return try {
             val targetProfile = repository.findUserByUsername(trimmed)
-            if (targetProfile != null && targetProfile.id != repository.userId) {
+            if (targetProfile == null) {
+                Result.failure(Exception("User \"$trimmed\" not found"))
+            } else if (targetProfile.id == repository.userId) {
+                Result.failure(Exception("You cannot add yourself as a friend"))
+            } else {
                 repository.addFriend(targetProfile.id, targetProfile)
+                logAction("FRIEND_ADDED", "username=$trimmed")
+                Result.success(Unit)
             }
+        } catch (e: Exception) {
+            Result.failure(Exception("Failed to add friend: ${e.message}"))
         }
-        logAction("FRIEND_ADDED", "username=$trimmed")
     }
 
     fun removeFriend(friendId: String) {
