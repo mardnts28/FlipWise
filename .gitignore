@@ -1,4 +1,4 @@
-*.iml
+/*.iml
 .gradle
 /local.properties
 /.idea/caches
@@ -20,4 +20,12 @@ hs_err_pid*
 replay_pid*
 *.txt
 build_output*
-!google-services.json # If it was accidentally ignored, we might want to keep it if it's essential
+!google-services.json
+
+# Web / Admin Dashboard
+node_modules/
+admin-dashboard/node_modules/
+admin-dashboard/dist/
+admin-dashboard/.vite/
+admin-dashboard/.env
+.firebase/
