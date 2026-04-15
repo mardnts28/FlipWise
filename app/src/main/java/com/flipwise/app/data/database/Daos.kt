@@ -48,17 +48,17 @@ interface FlashcardDao {
 
 @Dao
 interface StudySessionDao {
-    @Query("SELECT * FROM study_sessions ORDER BY date DESC")
-    fun getAllSessions(): Flow<List<StudySession>>
+    @Query("SELECT * FROM study_sessions WHERE userId = :currUserId ORDER BY date DESC")
+    fun getAllSessions(currUserId: String): Flow<List<StudySession>>
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSession(session: StudySession)
 
-    @Query("SELECT * FROM study_sessions WHERE date >= :startDate")
-    suspend fun getSessionsSince(startDate: Long): List<StudySession>
+    @Query("SELECT * FROM study_sessions WHERE userId = :currUserId AND date >= :startDate")
+    suspend fun getSessionsSince(currUserId: String, startDate: Long): List<StudySession>
 
-    @Query("SELECT * FROM study_sessions ORDER BY date DESC")
-    suspend fun getAllSessionsOnce(): List<StudySession>
+    @Query("SELECT * FROM study_sessions WHERE userId = :currUserId ORDER BY date DESC")
+    suspend fun getAllSessionsOnce(currUserId: String): List<StudySession>
 }
 
 @Dao

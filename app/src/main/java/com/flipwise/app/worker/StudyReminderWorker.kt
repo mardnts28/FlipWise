@@ -19,7 +19,7 @@ class StudyReminderWorker(
         val repository = FlipWiseRepository(applicationContext)
         
         // Logic to check if user has studied today
-        val sessions = db.studySessionDao().getAllSessions().firstOrNull() ?: emptyList()
+        val sessions = db.studySessionDao().getAllSessions(repository.userId).firstOrNull() ?: emptyList()
         val today = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)

@@ -237,7 +237,7 @@ class FlipWiseRepository(context: Context) {
             // 4. Sync Sessions
             val sessionsSnapshot = remoteDatabase.child("users").child(userId).child("sessions").get().await()
             sessionsSnapshot.children.mapNotNull { it.getValue(StudySession::class.java) }.forEach {
-                sessionDao.insertSession(it)
+                sessionDao.insertSession(it.copy(userId = userId))
             }
             
             // 5. Sync Friends
@@ -259,12 +259,13 @@ class FlipWiseRepository(context: Context) {
     }
 
     // --- Sessions ---
-    val sessions: Flow<List<StudySession>> = sessionDao.getAllSessions()
+    val sessions: Flow<List<StudySession>> = sessionDao.getAllSessions(userId)
 
     suspend fun saveSession(session: StudySession) {
-        sessionDao.insertSession(session)
-        // Sync to cloud
-        remoteDatabase.child("users").child(userId).child("sessions").push().setValue(session).await()
+        val userSession = session.copy(userId = userId)
+        sessionDao.insertSession(userSession)
+        // Sync to Firebase
+        remoteDatabase.child("users").child(userId).child("sessions").push().setValue(userSession).await()
     }
 
     // --- Leaderboard ---
@@ -321,11 +322,11 @@ class FlipWiseRepository(context: Context) {
      * is scoped to a specific deck, and only sessions after the goal's start date.
      */
     suspend fun getSessionsForGoal(goal: Challenge): List<StudySession> {
-        val sessions = sessionDao.getSessionsSince(goal.startDate)
+        val allSessions = sessionDao.getSessionsSince(userId, goal.startDate)
         return if (goal.deckIds.isNotBlank()) {
-            sessions.filter { it.deckId == goal.deckIds }
+            allSessions.filter { it.deckId == goal.deckIds }
         } else {
-            sessions
+            allSessions
         }
     }
 
@@ -481,9 +482,12 @@ class FlipWiseRepository(context: Context) {
     }
 
     suspend fun acceptFriendRequest(friend: Friend) {
-        val currentProfile = syncProfile() ?: userProfile.firstOrNull() ?: UserProfile(id = userId)
+        val currentProfile = userProfile.firstOrNull() ?: UserProfile(id = userId)
         val now = System.currentTimeMillis()
         
+        // Update local DB IMMEDIATELY for snappy UI
+        appDatabase.friendDao().insertFriend(friend.copy(status = "accepted", addedAt = now))
+
         // My entry: update their request in my list to "accepted"
         val myEntryData = mapOf(
             "id" to friend.id,
@@ -508,7 +512,7 @@ class FlipWiseRepository(context: Context) {
             "status" to "accepted",
             "addedAt" to now,
             "totalPoints" to currentProfile.totalPoints,
-            "currentStreak" to 0, // We could sync this too if desired
+            "currentStreak" to 0, 
             "totalCardsStudied" to 0
         )
 
@@ -518,6 +522,7 @@ class FlipWiseRepository(context: Context) {
             "type" to "friend_accepted",
             "title" to "Friend Request Accepted",
             "message" to "${currentProfile.displayName} accepted your friend request!",
+            "senderId" to userId, // Added senderId for context
             "timestamp" to now,
             "read" to false
         )
@@ -531,10 +536,12 @@ class FlipWiseRepository(context: Context) {
             )
             remoteDatabase.updateChildren(updates).await()
             
-            // Keep local DB in sync
-            appDatabase.friendDao().insertFriend(friend.copy(status = "accepted"))
+            // Sync profile data to remote as well if needed
+            // syncProfile() // Optional now
         } catch (e: Exception) {
             android.util.Log.e("FRIEND_ACCEPT", "Failed to accept friend request: ${e.message}")
+            // Revert local change on failure
+            appDatabase.friendDao().insertFriend(friend)
             throw e
         }
     }

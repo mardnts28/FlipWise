@@ -26,7 +26,9 @@ sealed class Screen(val route: String) {
         fun createRoute(email: String) = "register_success/$email"
     }
     object CompleteProfile : Screen("complete_profile")
-    object Leaderboard  : Screen("leaderboard")
+    object Leaderboard  : Screen("leaderboard?tab={tab}") {
+        fun createRoute(tab: Int = 0) = "leaderboard?tab=$tab"
+    }
     object DeckDetail   : Screen("deck/{deckId}") {
         fun createRoute(deckId: String) = "deck/$deckId"
     }
@@ -183,7 +185,8 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                 },
                 onNavigateToDecks = { navController.navigate(Screen.DeckList.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-                onNavigateToProfile = { tab -> navController.navigate(Screen.Profile.createRoute(tab)) }
+                onNavigateToProfile = { tab -> navController.navigate(Screen.Profile.createRoute(tab)) },
+                onNavigateToLeaderboard = { tab -> navController.navigate(Screen.Leaderboard.createRoute(tab)) }
             )
         }
 
@@ -267,12 +270,20 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
             )
         }
 
-        composable(Screen.Leaderboard.route) {
+        composable(
+            route = Screen.Leaderboard.route,
+            arguments = listOf(navArgument("tab") {
+                type = NavType.IntType
+                defaultValue = 0
+            })
+        ) { backStackEntry ->
+            val initialTab = backStackEntry.arguments?.getInt("tab") ?: 0
             LeaderboardScreen(
                 onBack = { navController.popBackStack() },
                 onNavigateToProfile = { userId ->
                     navController.navigate(Screen.OtherProfile.createRoute(userId))
-                }
+                },
+                initialTab = initialTab
             )
         }
 

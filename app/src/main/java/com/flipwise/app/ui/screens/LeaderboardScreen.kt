@@ -47,6 +47,7 @@ import androidx.compose.ui.draw.clip
 fun LeaderboardScreen(
     onBack: () -> Unit,
     onNavigateToProfile: (String) -> Unit,
+    initialTab: Int = 0,
     viewModel: ProfileViewModel = viewModel(),
     deckViewModel: com.flipwise.app.viewmodel.DeckViewModel = viewModel()
 ) {
@@ -61,7 +62,8 @@ fun LeaderboardScreen(
     var showGoalDialog by remember { mutableStateOf(false) }
     var showAddFriend by remember { mutableStateOf(false) }
     var friendMessage by remember { mutableStateOf<String?>(null) }
-    var selectedTab by remember { mutableIntStateOf(0) } // 0: Global, 1: Friends, 2: Goals
+    val lastCompletedGoal by deckViewModel.lastCompletedGoal.collectAsState()
+    var selectedTab by remember { mutableIntStateOf(initialTab) } // 0: Global, 1: Friends, 2: Goals
     val scope = rememberCoroutineScope()
 
     if (showGoalDialog) {
@@ -426,6 +428,70 @@ fun LeaderboardScreen(
                 delay(3000)
                 friendMessage = null
             }
+        }
+
+        // --- Personal Goal Congratulations Pop-up ---
+        lastCompletedGoal?.let { goal ->
+            AlertDialog(
+                onDismissRequest = { deckViewModel.clearCompletedGoal() },
+                title = { 
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                        Text("🎉 Congratulations!", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = GrapePop)
+                    }
+                },
+                text = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                        Surface(
+                            modifier = Modifier.size(80.dp),
+                            shape = CircleShape,
+                            color = Color(0xFFF0FDF4)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(48.dp))
+                            }
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            "Goal Accomplished!", 
+                            fontWeight = FontWeight.Bold, 
+                            fontSize = 18.sp, 
+                            color = NavyInk,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "You've successfully completed your goal:\n\"${goal.name}\"",
+                            textAlign = TextAlign.Center,
+                            color = Color.Gray
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFF0FDF4)
+                        ) {
+                            Text(
+                                "+50 Bonus XP Earned!",
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                color = Color(0xFF10B981),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { deckViewModel.clearCompletedGoal() },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = GrapePop)
+                    ) {
+                        Text("Keep it up!", fontWeight = FontWeight.Bold)
+                    }
+                },
+                shape = RoundedCornerShape(28.dp),
+                containerColor = Color.White
+            )
         }
     }
 }

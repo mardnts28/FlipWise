@@ -36,6 +36,7 @@ data class Flashcard(
 @Entity(tableName = "study_sessions")
 data class StudySession(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val userId: String = "", // Added for user isolation
     val deckId: String = "",
     val date: Long = System.currentTimeMillis(),
     val cardsStudied: Int = 0,

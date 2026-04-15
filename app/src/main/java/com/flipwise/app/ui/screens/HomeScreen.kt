@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -32,6 +33,7 @@ fun HomeScreen(
     onNavigateToDecks: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToProfile: (Int) -> Unit,
+    onNavigateToLeaderboard: (Int) -> Unit,
     viewModel: DeckViewModel = viewModel(),
     profileViewModel: com.flipwise.app.viewmodel.ProfileViewModel = viewModel()
 ) {
@@ -41,6 +43,7 @@ fun HomeScreen(
     val profile by profileViewModel.userProfile.collectAsState()
     val activeGoal by viewModel.activeGoal.collectAsState()
     val allActiveGoals by viewModel.allActiveGoals.collectAsState()
+    val lastCompletedGoal by viewModel.lastCompletedGoal.collectAsState()
     val dimensions = FlipWiseDesign.dimensions
 
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -438,7 +441,7 @@ fun HomeScreen(
                 Button(
                     onClick = {
                         showFriendNotification = false
-                        onNavigateToProfile(1) // 1 = Friends tab
+                        onNavigateToLeaderboard(1) // 1 = Friends tab on Leaderboard
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
                 ) {
@@ -506,6 +509,70 @@ fun HomeScreen(
                 TextButton(onClick = { showAllGoalsDialog = false }) { Text("Close") }
             },
             shape = RoundedCornerShape(24.dp),
+            containerColor = Color.White
+        )
+    }
+
+    // --- Personal Goal Congratulations Pop-up ---
+    lastCompletedGoal?.let { goal ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearCompletedGoal() },
+            title = { 
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    Text("🎉 Congratulations!", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF7C3AED))
+                }
+            },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    Surface(
+                        modifier = Modifier.size(80.dp),
+                        shape = CircleShape,
+                        color = Color(0xFFF0FDF4)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.EmojiEvents, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(48.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        "Goal Accomplished!", 
+                        fontWeight = FontWeight.Bold, 
+                        fontSize = 18.sp, 
+                        color = Color(0xFF1E1B4B),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "You've successfully completed your goal:\n\"${goal.name}\"",
+                        textAlign = TextAlign.Center,
+                        color = Color.Gray
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFF0FDF4)
+                    ) {
+                        Text(
+                            "+50 Bonus XP Earned!",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            color = Color(0xFF10B981),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.clearCompletedGoal() },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
+                ) {
+                    Text("Keep it up!", fontWeight = FontWeight.Bold)
+                }
+            },
+            shape = RoundedCornerShape(28.dp),
             containerColor = Color.White
         )
     }

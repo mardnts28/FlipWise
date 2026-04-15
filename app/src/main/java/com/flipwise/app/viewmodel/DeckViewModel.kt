@@ -41,6 +41,9 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
     private val _allActiveGoals = MutableStateFlow<List<Challenge>>(emptyList())
     val allActiveGoals: StateFlow<List<Challenge>> = _allActiveGoals.asStateFlow()
 
+    private val _lastCompletedGoal = MutableStateFlow<Challenge?>(null)
+    val lastCompletedGoal: StateFlow<Challenge?> = _lastCompletedGoal.asStateFlow()
+
     // AI Generation State
     private val _aiGenerationState = MutableStateFlow<AiGenerationState>(AiGenerationState.Idle)
     val aiGenerationState: StateFlow<AiGenerationState> = _aiGenerationState.asStateFlow()
@@ -175,7 +178,7 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
         if (progress.totalCardsStudied >= 500) unlock("points_500")
 
         // Sessions
-        val totalSessions = sessionDao.getAllSessionsOnce().size
+        val totalSessions = sessionDao.getAllSessionsOnce(repository.userId).size
         if (totalSessions >= 1) unlock("study_1")
         if (totalSessions >= 10) unlock("study_10")
         if (totalSessions >= 50) unlock("study_50")
@@ -185,7 +188,7 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun loadUserProgress() {
         viewModelScope.launch {
-            sessionDao.getAllSessions().collect { sessions ->
+            repository.sessions.collect { sessions ->
                 _userProgress.value = UserProgress(
                     totalPoints       = sessions.sumOf { it.pointsEarned },
                     totalCardsStudied = sessions.sumOf { it.cardsStudied },
@@ -517,6 +520,7 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
                                 )
                             }
                             logAction("GOAL_COMPLETED", "goalId=${goal.id} name=${goal.name}")
+                            _lastCompletedGoal.value = goal
                         }
                         // Auto-expire: deadline passed
                         now > goal.endDate -> {
@@ -577,6 +581,7 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
                             )
                         }
                         logAction("GOAL_COMPLETED", "goalId=${goal.id} name=${goal.name}")
+                        _lastCompletedGoal.value = goal
                     }
                     now > goal.endDate -> {
                         repository.updateChallenge(goal.copy(status = "expired"))
@@ -589,6 +594,10 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
         } catch (e: Exception) {
             android.util.Log.e("GOAL", "updateGoalProgress failed: ${e.message}")
         }
+    }
+
+    fun clearCompletedGoal() {
+        _lastCompletedGoal.value = null
     }
 
     /**
