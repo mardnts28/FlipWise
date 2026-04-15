@@ -44,6 +44,7 @@ import kotlinx.coroutines.launch
 fun ProfileScreen(
     onNavigateBack: () -> Unit,
     onNavigateToChallengeGame: (String) -> Unit,
+    initialTab: Int = 0,
     viewModel: ProfileViewModel = viewModel()
 ) {
     val profile by viewModel.userProfile.collectAsState()
@@ -53,7 +54,7 @@ fun ProfileScreen(
     val recentSessions by viewModel.recentSessions.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(initialTab) }
     var showAddFriend by remember { mutableStateOf(false) }
     var showAddChallenge by remember { mutableStateOf(false) }
     var showEditProfile by remember { mutableStateOf(false) }

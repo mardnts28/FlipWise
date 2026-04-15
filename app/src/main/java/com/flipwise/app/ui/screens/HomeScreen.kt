@@ -31,7 +31,7 @@ fun HomeScreen(
     onNavigateToStudy: (String?) -> Unit,
     onNavigateToDecks: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    onNavigateToProfile: () -> Unit,
+    onNavigateToProfile: (Int) -> Unit,
     viewModel: DeckViewModel = viewModel(),
     profileViewModel: com.flipwise.app.viewmodel.ProfileViewModel = viewModel()
 ) {
@@ -348,7 +348,7 @@ fun HomeScreen(
         val firstRequest = pendingRequests.first()
         AlertDialog(
             onDismissRequest = { showFriendNotification = false },
-            title = { Text("New Friend Request! \uD83D\uDC4B") },
+            title = { Text("New Friend Request!") },
             text = {
                 Text("${firstRequest.displayName} (@${firstRequest.username}) wants to be friends on FlipWise!")
             },
@@ -356,11 +356,11 @@ fun HomeScreen(
                 Button(
                     onClick = {
                         showFriendNotification = false
-                        onNavigateToProfile()
+                        onNavigateToProfile(1) // 1 = Friends tab
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
                 ) {
-                    Text("View Profile")
+                    Text("View")
                 }
             },
             dismissButton = {

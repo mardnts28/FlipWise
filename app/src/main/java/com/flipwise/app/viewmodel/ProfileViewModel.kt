@@ -213,8 +213,13 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun removeFriend(friendId: String) {
-        viewModelScope.launch { 
-            repository.declineFriendRequest(friendId)
+        viewModelScope.launch {
+            try {
+                repository.declineFriendRequest(friendId)
+            } catch (e: Exception) {
+                // Log error instead of crashing
+                android.util.Log.e("VM_ERROR", "Remove friend failed: ${e.message}")
+            }
         }
     }
 
@@ -226,9 +231,13 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     fun declineFriendRequest(friendId: String) {
         viewModelScope.launch {
-            repository.declineFriendRequest(friendId)
+            try {
+                repository.declineFriendRequest(friendId)
+                logAction("FRIEND_REMOVED", "friendId=$friendId")
+            } catch (e: Exception) {
+                android.util.Log.e("VM_ERROR", "Decline friend failed: ${e.message}")
+            }
         }
-        logAction("FRIEND_REMOVED", "friendId=$friendId")
     }
 
     fun addChallenge(challenge: Challenge) {

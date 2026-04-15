@@ -239,8 +239,18 @@ class FlipWiseRepository(context: Context) {
                 sessionDao.insertSession(it)
             }
             
-            // 5. Sync Achievements (if any)
-            // ...
+            // 5. Sync Friends
+            try {
+                val friendsSnapshot = remoteDatabase.child("users").child(userId).child("friends").get().await()
+                friendsSnapshot.children.mapNotNull { child ->
+                    parseFriendFromSnapshot(child)
+                }.forEach {
+                    appDatabase.friendDao().insertFriend(it)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("SYNC", "Friends sync failed: ${e.message}")
+            }
+            
             profile
         } catch (e: Exception) {
             null
@@ -343,78 +353,180 @@ class FlipWiseRepository(context: Context) {
                 .get()
                 .await()
             
-            snapshot.children.firstOrNull()?.getValue(UserProfile::class.java)
+            val child = snapshot.children.firstOrNull() ?: return null
+            // Manually extract fields instead of relying on getValue(UserProfile::class.java)
+            // because Kotlin data classes with val properties can fail Firebase deserialization,
+            // causing the id to default to "local_user" and showing the wrong user.
+            val data = child.value as? Map<*, *> ?: return null
+            val resolvedId = child.key ?: return null
+            
+            UserProfile(
+                id = resolvedId,
+                username = data["username"] as? String ?: "",
+                displayName = data["displayName"] as? String ?: "User",
+                avatar = data["avatar"] as? String ?: "🎓",
+                totalPoints = (data["totalPoints"] as? Number)?.toInt() ?: 0,
+                xp = (data["xp"] as? Number)?.toInt() ?: 0,
+                level = (data["level"] as? Number)?.toInt() ?: 1
+            )
         } catch (e: Exception) {
+            android.util.Log.e("FRIEND_SEARCH", "findUserByUsername failed: ${e.message}")
             null
         }
     }
 
     suspend fun addFriend(targetId: String, targetProfile: UserProfile) {
+        // Check for duplicate friend request
+        val existingSnapshot = remoteDatabase.child("users").child(userId)
+            .child("friends").child(targetId).get().await()
+        if (existingSnapshot.exists()) {
+            val existingStatus = existingSnapshot.child("status").getValue(String::class.java)
+            when (existingStatus) {
+                "accepted" -> throw Exception("You are already friends with this user")
+                "sent" -> throw Exception("Friend request already sent")
+                "pending" -> throw Exception("This user already sent you a request — check your Pending Requests")
+            }
+        }
+        
         val currentProfile = userProfile.firstOrNull() ?: UserProfile(id = userId)
+        val now = System.currentTimeMillis()
         
-        // 1. Add to target user's friends list as "pending" (this is the notification)
-        val incomingRequest = Friend(
-            id = userId,
-            userId = targetId, // Target is the "owner" of this list entry
-            username = currentProfile.username,
-            displayName = currentProfile.displayName,
-            avatar = currentProfile.avatar,
-            status = "pending",
-            addedAt = System.currentTimeMillis(),
-            totalPoints = currentProfile.totalPoints,
-            currentStreak = 0,
-            totalCardsStudied = 0
+        // Use a multi-path update so both writes succeed or fail atomically
+        val incomingData = mapOf(
+            "id" to userId,
+            "userId" to targetId,
+            "username" to currentProfile.username,
+            "displayName" to currentProfile.displayName,
+            "avatar" to currentProfile.avatar,
+            "status" to "pending",
+            "addedAt" to now,
+            "totalPoints" to currentProfile.totalPoints,
+            "currentStreak" to 0,
+            "totalCardsStudied" to 0
         )
-        remoteDatabase.child("users").child(targetId).child("friends").child(userId).setValue(incomingRequest).await()
         
-        // 2. Add to my own friends list as "sent"
+        val outgoingData = mapOf(
+            "id" to targetId,
+            "userId" to userId,
+            "username" to targetProfile.username,
+            "displayName" to targetProfile.displayName,
+            "avatar" to targetProfile.avatar,
+            "status" to "sent",
+            "addedAt" to now,
+            "totalPoints" to targetProfile.totalPoints,
+            "currentStreak" to 0,
+            "totalCardsStudied" to 0
+        )
+        
+        // Atomic multi-path update: writes to both users at once
+        val updates = hashMapOf<String, Any>(
+            "users/$targetId/friends/$userId" to incomingData,
+            "users/$userId/friends/$targetId" to outgoingData
+        )
+        remoteDatabase.updateChildren(updates).await()
+        
+        // Keep local DB in sync
         val outgoingRequest = Friend(
             id = targetId,
-            userId = userId, // I am the "owner"
+            userId = userId,
             username = targetProfile.username,
             displayName = targetProfile.displayName,
             avatar = targetProfile.avatar,
             status = "sent",
-            addedAt = System.currentTimeMillis(),
+            addedAt = now,
             totalPoints = targetProfile.totalPoints,
             currentStreak = 0,
             totalCardsStudied = 0
         )
-        remoteDatabase.child("users").child(userId).child("friends").child(targetId).setValue(outgoingRequest).await()
-        
-        // 3. Keep local DB in sync for me
         appDatabase.friendDao().insertFriend(outgoingRequest)
     }
 
     suspend fun acceptFriendRequest(friend: Friend) {
         val currentProfile = userProfile.firstOrNull() ?: UserProfile(id = userId)
+        val now = System.currentTimeMillis()
         
-        // 1. Update my entry for them to "accepted"
-        val acceptedFriendMe = friend.copy(status = "accepted")
-        remoteDatabase.child("users").child(userId).child("friends").child(friend.id).setValue(acceptedFriendMe).await()
-        appDatabase.friendDao().insertFriend(acceptedFriendMe)
-        
-        // 2. Update their entry for me to "accepted"
-        val acceptedFriendThem = Friend(
-            id = userId,
-            userId = friend.id,
-            username = currentProfile.username,
-            displayName = currentProfile.displayName,
-            avatar = currentProfile.avatar,
-            status = "accepted",
-            addedAt = System.currentTimeMillis(),
-            totalPoints = currentProfile.totalPoints,
-            currentStreak = 0,
-            totalCardsStudied = 0
+        // My entry: update their request in my list to "accepted"
+        val myEntryData = mapOf(
+            "id" to friend.id,
+            "userId" to userId,
+            "username" to friend.username,
+            "displayName" to friend.displayName,
+            "avatar" to friend.avatar,
+            "status" to "accepted",
+            "addedAt" to now,
+            "totalPoints" to friend.totalPoints,
+            "currentStreak" to friend.currentStreak,
+            "totalCardsStudied" to friend.totalCardsStudied
         )
-        remoteDatabase.child("users").child(friend.id).child("friends").child(userId).setValue(acceptedFriendThem).await()
+        
+        // Their entry: update my entry in their list to "accepted"
+        val theirEntryData = mapOf(
+            "id" to userId,
+            "userId" to friend.id,
+            "username" to currentProfile.username,
+            "displayName" to currentProfile.displayName,
+            "avatar" to currentProfile.avatar,
+            "status" to "accepted",
+            "addedAt" to now,
+            "totalPoints" to currentProfile.totalPoints,
+            "currentStreak" to 0,
+            "totalCardsStudied" to 0
+        )
+        
+        // Atomic multi-path update: both sides become "accepted" at once
+        val updates = hashMapOf<String, Any>(
+            "users/$userId/friends/${friend.id}" to myEntryData,
+            "users/${friend.id}/friends/$userId" to theirEntryData
+        )
+        remoteDatabase.updateChildren(updates).await()
+        
+        // Keep local DB in sync
+        appDatabase.friendDao().insertFriend(friend.copy(status = "accepted"))
     }
 
     suspend fun declineFriendRequest(friendId: String) {
-        // Remove from both lists
-        remoteDatabase.child("users").child(userId).child("friends").child(friendId).removeValue().await()
-        remoteDatabase.child("users").child(friendId).child("friends").child(userId).removeValue().await()
-        appDatabase.friendDao().deleteFriend(friendId)
+        try {
+            // Atomic multi-path update: remove from both users' friends lists at once
+            val updates = hashMapOf<String, Any?>(
+                "users/$userId/friends/$friendId" to null,
+                "users/$friendId/friends/$userId" to null
+            )
+            @Suppress("UNCHECKED_CAST")
+            remoteDatabase.updateChildren(updates as Map<String, Any>).await()
+
+            // Remove from local DB so the UI updates immediately
+            appDatabase.friendDao().deleteFriend(friendId)
+        } catch (e: Exception) {
+            android.util.Log.e("FRIEND_ERROR", "Failed to unfriend: ${e.message}")
+            // Fallback: at least remove from local DB and my own list
+            try {
+                remoteDatabase.child("users").child(userId).child("friends").child(friendId).removeValue().await()
+                appDatabase.friendDao().deleteFriend(friendId)
+            } catch (fallbackErr: Exception) {
+                android.util.Log.e("FRIEND_ERROR", "Fallback also failed: ${fallbackErr.message}")
+            }
+        }
+    }
+
+    /**
+     * Safely parse a Friend from a Firebase snapshot, using the snapshot key
+     * as the authoritative friend ID to avoid Kotlin val-deserialization issues.
+     */
+    private fun parseFriendFromSnapshot(child: com.google.firebase.database.DataSnapshot): Friend? {
+        val data = child.value as? Map<*, *> ?: return null
+        val friendId = child.key ?: return null
+        return Friend(
+            id = friendId,
+            userId = data["userId"] as? String ?: "",
+            username = data["username"] as? String ?: "",
+            displayName = data["displayName"] as? String ?: "",
+            avatar = data["avatar"] as? String ?: "",
+            status = data["status"] as? String ?: "",
+            addedAt = (data["addedAt"] as? Number)?.toLong() ?: System.currentTimeMillis(),
+            totalPoints = (data["totalPoints"] as? Number)?.toInt() ?: 0,
+            currentStreak = (data["currentStreak"] as? Number)?.toInt() ?: 0,
+            totalCardsStudied = (data["totalCardsStudied"] as? Number)?.toInt() ?: 0
+        )
     }
 
     fun getFriendsFlow(): Flow<List<Friend>> = callbackFlow {
@@ -425,7 +537,9 @@ class FlipWiseRepository(context: Context) {
         val ref = remoteDatabase.child("users").child(userId).child("friends")
         val listener = object : com.google.firebase.database.ValueEventListener {
             override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
-                val friends = snapshot.children.mapNotNull { it.getValue(Friend::class.java) }
+                val friends = snapshot.children.mapNotNull { child ->
+                    parseFriendFromSnapshot(child)
+                }
                 trySend(friends)
                 
                 // Keep local DB in sync

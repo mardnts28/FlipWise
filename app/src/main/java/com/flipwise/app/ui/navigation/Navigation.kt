@@ -17,7 +17,9 @@ sealed class Screen(val route: String) {
     object Achievements : Screen("achievements")
     object StudyTracker : Screen("tracker")
     object Settings     : Screen("settings")
-    object Profile      : Screen("profile")
+    object Profile      : Screen("profile?tab={tab}") {
+        fun createRoute(tab: Int = 0) = "profile?tab=$tab"
+    }
     object Login        : Screen("login")
     object Register     : Screen("register")
     object RegisterSuccess : Screen("register_success/{email}") {
@@ -178,7 +180,7 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                 },
                 onNavigateToDecks = { navController.navigate(Screen.DeckList.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-                onNavigateToProfile = { navController.navigate(Screen.Profile.route) }
+                onNavigateToProfile = { tab -> navController.navigate(Screen.Profile.createRoute(tab)) }
             )
         }
 
@@ -228,7 +230,7 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
             val profileViewModel: ProfileViewModel = viewModel()
             SettingsScreen(
                 onBack = { navController.popBackStack() },
-                onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
+                onNavigateToProfile = { navController.navigate(Screen.Profile.createRoute()) },
                 onNavigateToOnboarding = { navController.navigate(Screen.Onboarding.route) },
                 onLogout = {
                     profileViewModel.signOut()
@@ -244,10 +246,18 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
             )
         }
 
-        composable(Screen.Profile.route) {
+        composable(
+            route = Screen.Profile.route,
+            arguments = listOf(navArgument("tab") {
+                type = NavType.IntType
+                defaultValue = 0
+            })
+        ) { backStackEntry ->
+            val initialTab = backStackEntry.arguments?.getInt("tab") ?: 0
             ProfileScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToChallengeGame = { id -> navController.navigate(Screen.ChallengeGame.createRoute(id)) }
+                onNavigateToChallengeGame = { id -> navController.navigate(Screen.ChallengeGame.createRoute(id)) },
+                initialTab = initialTab
             )
         }
 
