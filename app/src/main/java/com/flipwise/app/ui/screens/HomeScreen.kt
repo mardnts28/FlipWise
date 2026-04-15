@@ -39,10 +39,14 @@ fun HomeScreen(
     val progress by viewModel.userProgress.collectAsState()
     val friends by profileViewModel.friends.collectAsState(initial = emptyList())
     val profile by profileViewModel.userProfile.collectAsState()
+    val activeGoal by viewModel.activeGoal.collectAsState()
+    val allActiveGoals by viewModel.allActiveGoals.collectAsState()
     val dimensions = FlipWiseDesign.dimensions
 
     var showCreateDialog by remember { mutableStateOf(false) }
     var showFriendNotification by remember { mutableStateOf(false) }
+    var goalToEdit by remember { mutableStateOf<com.flipwise.app.data.model.Challenge?>(null) }
+    var showAllGoalsDialog by remember { mutableStateOf(false) }
 
     val pendingRequests = remember(friends) {
         friends.filter { it.status == "pending" }
@@ -216,6 +220,84 @@ fun HomeScreen(
             }
         }
 
+        // --- Active Goal Widget ---
+        activeGoal?.let { goal ->
+            Surface(
+                modifier = Modifier
+                    .widthIn(max = 1200.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = dimensions.paddingLarge)
+                    .offset(y = (-14).dp)
+                    .clickable { 
+                        goalToEdit = allActiveGoals.find { it.id == goal.goalId }
+                    },
+                shape = RoundedCornerShape(20.dp),
+                shadowElevation = 4.dp,
+                color = Color.White
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(Color(0xFF7C3AED).copy(alpha = 0.1f), RoundedCornerShape(10.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Flag, contentDescription = null, tint = Color(0xFF7C3AED), modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                goal.name,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1E1B4B)
+                            )
+                            Text(
+                                "${goal.current} / ${goal.target} ${goal.goalType}",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                "${(goal.percentage * 100).toInt()}%",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF7C3AED)
+                            )
+                            Text(
+                                "${goal.daysLeft}d left",
+                                fontSize = 11.sp,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    LinearProgressIndicator(
+                        progress = { goal.percentage },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = Color(0xFF7C3AED),
+                        trackColor = Color(0xFF7C3AED).copy(alpha = 0.1f)
+                    )
+                }
+            }
+            if (allActiveGoals.size > 1) {
+                TextButton(
+                    onClick = { showAllGoalsDialog = true },
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    Text("View ${allActiveGoals.size - 1} Other Goals", color = Color(0xFF7C3AED), fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
         // --- Quick Actions Section ---
         Column(
             modifier = Modifier
@@ -380,6 +462,51 @@ fun HomeScreen(
                 viewModel.createDeck(name, subject, color, icon)
                 showCreateDialog = false
             }
+        )
+    }
+
+    if (goalToEdit != null) {
+        com.flipwise.app.ui.components.CreateGoalDialog(
+            decks = decks,
+            existingGoal = goalToEdit,
+            onDismiss = { goalToEdit = null },
+            onCreate = { challenge ->
+                profileViewModel.addChallenge(challenge)
+                viewModel.refreshGoals()
+                goalToEdit = null
+                showAllGoalsDialog = false
+            }
+        )
+    }
+
+    if (showAllGoalsDialog) {
+        AlertDialog(
+            onDismissRequest = { showAllGoalsDialog = false },
+            title = { Text("Your Active Goals", fontWeight = FontWeight.Bold) },
+            text = {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(allActiveGoals) { goal ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().clickable {
+                                goalToEdit = goal
+                                showAllGoalsDialog = false
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFF9F9FB)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(goal.name, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
+                                Text("Target: ${goal.goal} ${goal.goalType}", fontSize = 12.sp, color = Color.Gray)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAllGoalsDialog = false }) { Text("Close") }
+            },
+            shape = RoundedCornerShape(24.dp),
+            containerColor = Color.White
         )
     }
 }

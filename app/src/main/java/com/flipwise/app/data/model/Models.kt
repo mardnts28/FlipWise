@@ -119,3 +119,17 @@ sealed class AiGenerationState {
     data class Success(val cardsGenerated: Int) : AiGenerationState()
     data class Error(val message: String) : AiGenerationState()
 }
+
+/**
+ * Computed goal progress info for UI display.
+ * Not a Room entity — used only as a ViewModel state object.
+ */
+data class GoalProgressInfo(
+    val goalId: String,
+    val name: String,
+    val goalType: String,
+    val target: Int,
+    val current: Int,
+    val percentage: Float,
+    val daysLeft: Long
+)

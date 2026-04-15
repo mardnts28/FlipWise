@@ -34,6 +34,13 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
     private val _userProgress = MutableStateFlow(UserProgress())
     val userProgress: StateFlow<UserProgress> = _userProgress.asStateFlow()
 
+    // Active Goal for HomeScreen widget
+    private val _activeGoal = MutableStateFlow<GoalProgressInfo?>(null)
+    val activeGoal: StateFlow<GoalProgressInfo?> = _activeGoal.asStateFlow()
+
+    private val _allActiveGoals = MutableStateFlow<List<Challenge>>(emptyList())
+    val allActiveGoals: StateFlow<List<Challenge>> = _allActiveGoals.asStateFlow()
+
     // AI Generation State
     private val _aiGenerationState = MutableStateFlow<AiGenerationState>(AiGenerationState.Idle)
     val aiGenerationState: StateFlow<AiGenerationState> = _aiGenerationState.asStateFlow()
@@ -48,6 +55,7 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
     init {
         initAchievements()
         loadUserProgress()
+        refreshGoals()
         
         // Refresh AI insight when sessions or progress change
         viewModelScope.launch {
@@ -291,10 +299,14 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
             
             // Update active challenge scores
             repository.getActiveChallenges().first().forEach { challenge ->
-                if (challenge.status == "active") {
+                if (challenge.status == "active" && challenge.type != "personal") {
                     repository.updateChallengeScore(challenge.id, points)
                 }
             }
+
+            // Update personal goal progress after study session
+            updateGoalProgress()
+
             // Trigger check with updated local values
             val updatedProgress = _userProgress.value.copy(
                 totalPoints = _userProgress.value.totalPoints + points,
@@ -465,6 +477,137 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
 
     fun resetAiGenerationState() {
         _aiGenerationState.value = AiGenerationState.Idle
+    }
+
+    // ─── Goal Management ─────────────────────────────────────────
+
+    /**
+     * Refreshes all active personal goals:
+     * - Auto-expires goals past their endDate
+     * - Auto-completes goals that met their target
+     * - Updates the activeGoal StateFlow for the HomeScreen widget
+     */
+    fun refreshGoals() {
+        viewModelScope.launch {
+            try {
+                val goals = repository.getActivePersonalGoals()
+                val now = System.currentTimeMillis()
+
+                var bestActiveGoal: GoalProgressInfo? = null
+
+                for (goal in goals) {
+                    val progress = calculateGoalProgress(goal)
+                    val percentage = if (goal.goal > 0) {
+                        (progress.toFloat() / goal.goal.toFloat()).coerceIn(0f, 1f)
+                    } else 0f
+
+                    when {
+                        // Auto-complete: target reached
+                        percentage >= 1f -> {
+                            repository.updateChallenge(goal.copy(status = "completed"))
+                            // Award bonus XP for completing a goal
+                            val currentProfile = repository.userProfile.firstOrNull()
+                            if (currentProfile != null) {
+                                val bonusXp = 50
+                                repository.updateProfile(
+                                    currentProfile.copy(
+                                        totalPoints = currentProfile.totalPoints + bonusXp,
+                                        xp = currentProfile.xp + bonusXp
+                                    )
+                                )
+                            }
+                            logAction("GOAL_COMPLETED", "goalId=${goal.id} name=${goal.name}")
+                        }
+                        // Auto-expire: deadline passed
+                        now > goal.endDate -> {
+                            repository.updateChallenge(goal.copy(status = "expired"))
+                            logAction("GOAL_EXPIRED", "goalId=${goal.id} name=${goal.name}")
+                        }
+                        // Still active — track for the HomeScreen widget
+                        else -> {
+                            val info = GoalProgressInfo(
+                                goalId = goal.id,
+                                name = goal.name,
+                                goalType = goal.goalType,
+                                target = goal.goal,
+                                current = progress,
+                                percentage = percentage,
+                                daysLeft = ((goal.endDate - now) / 86400000).coerceAtLeast(0)
+                            )
+                            // Pick the goal closest to completion for the widget
+                            if (bestActiveGoal == null || info.percentage > bestActiveGoal!!.percentage) {
+                                bestActiveGoal = info
+                            }
+                        }
+                    }
+                }
+                _activeGoal.value = bestActiveGoal
+                _allActiveGoals.value = goals.filter { it.status == "active" }
+            } catch (e: Exception) {
+                android.util.Log.e("GOAL", "refreshGoals failed: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Called after every study session to update personal goal progress.
+     */
+    private suspend fun updateGoalProgress() {
+        try {
+            val goals = repository.getActivePersonalGoals()
+            val now = System.currentTimeMillis()
+
+            for (goal in goals) {
+                val progress = calculateGoalProgress(goal)
+                val percentage = if (goal.goal > 0) {
+                    (progress.toFloat() / goal.goal.toFloat()).coerceIn(0f, 1f)
+                } else 0f
+
+                when {
+                    percentage >= 1f -> {
+                        repository.updateChallenge(goal.copy(status = "completed"))
+                        val currentProfile = repository.userProfile.firstOrNull()
+                        if (currentProfile != null) {
+                            val bonusXp = 50
+                            repository.updateProfile(
+                                currentProfile.copy(
+                                    totalPoints = currentProfile.totalPoints + bonusXp,
+                                    xp = currentProfile.xp + bonusXp
+                                )
+                            )
+                        }
+                        logAction("GOAL_COMPLETED", "goalId=${goal.id} name=${goal.name}")
+                    }
+                    now > goal.endDate -> {
+                        repository.updateChallenge(goal.copy(status = "expired"))
+                        logAction("GOAL_EXPIRED", "goalId=${goal.id} name=${goal.name}")
+                    }
+                }
+            }
+            // Refresh the widget after updates
+            refreshGoals()
+        } catch (e: Exception) {
+            android.util.Log.e("GOAL", "updateGoalProgress failed: ${e.message}")
+        }
+    }
+
+    /**
+     * Calculates the current progress value for a goal, correctly filtering
+     * by deck and date range.
+     */
+    private suspend fun calculateGoalProgress(goal: Challenge): Int {
+        return when (goal.goalType) {
+            "Cards Studied" -> {
+                val sessions = repository.getSessionsForGoal(goal)
+                sessions.sumOf { it.cardsStudied }
+            }
+            "Points Earned" -> {
+                val sessions = repository.getSessionsForGoal(goal)
+                sessions.sumOf { it.pointsEarned }
+            }
+            "Streak Days" -> _userProgress.value.currentStreak
+            else -> 0
+        }
     }
 
     private fun refreshAiInsight(progress: UserProgress, recentSessions: List<StudySession>) {

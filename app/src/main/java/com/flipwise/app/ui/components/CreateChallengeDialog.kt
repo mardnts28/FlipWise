@@ -201,6 +201,17 @@ fun CreateChallengeDialog(
                                 errorMessage = "Cannot start battle. Some selected decks have NO flashcards."
                                 return@Button
                             }
+                            
+                            // Validate format requirements
+                            if (subType == "1v1" && selectedFriendIds.size != 1) {
+                                errorMessage = "1 vs 1 requires exactly 1 friend."
+                                return@Button
+                            }
+                            if (subType == "team_vs_team" && selectedFriendIds.size < 2) {
+                                errorMessage = "Team battles require more than 2 total players (at least 2 friends)."
+                                return@Button
+                            }
+
                             errorMessage = null
                             val timeLimit = (timerMinutes.toIntOrNull() ?: 5) * 60
                             onCreate(Challenge(

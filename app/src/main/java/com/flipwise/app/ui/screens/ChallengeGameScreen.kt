@@ -101,8 +101,11 @@ fun ChallengeGameScreen(
         )
     } else if (gameCards != null && gameCards!!.isNotEmpty()) {
         val currentCard = gameCards!![currentIndex % gameCards!!.size] // Loop cards if needed
+        val isMCQ = !currentCard.options.isNullOrBlank()
+        val optionsList = remember(currentCard) { currentCard.options?.split("|")?.filter { it.isNotBlank() } ?: emptyList() }
+        
         val rotation by animateFloatAsState(
-            targetValue = if (isFlipped) 180f else 0f,
+            targetValue = if (isFlipped && !isMCQ) 180f else 0f,
             animationSpec = tween(500),
             label = "flip"
         )
@@ -170,7 +173,7 @@ fun ChallengeGameScreen(
                         rotationY = rotation
                         cameraDistance = 12f * density
                     }
-                    .clickable { isFlipped = !isFlipped },
+                    .clickable(enabled = !isMCQ) { isFlipped = !isFlipped },
                 contentAlignment = Alignment.Center
             ) {
                 Surface(
@@ -194,10 +197,34 @@ fun ChallengeGameScreen(
                 }
             }
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.weight(0.5f))
 
             // Controls
-            if (isFlipped) {
+            if (isMCQ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    optionsList.forEach { option ->
+                        Button(
+                            onClick = {
+                                if (option == currentCard.back) {
+                                    userScore += 15
+                                } else {
+                                    // Wrong answer, maybe don't add score or subtract
+                                }
+                                currentIndex++
+                            },
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = NavyInk),
+                            border = BorderStroke(1.dp, Color.LightGray)
+                        ) {
+                            Text(option, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            } else if (isFlipped) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(32.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -255,6 +282,25 @@ fun ChallengeResultContent(
     val isWin = userScore >= opponentScore
     val title = if (isWin) "VICTORY! \uD83C\uDFC6" else "DEFEAT \uD83D\uDE14"
     val winColor = if (isWin) Color(0xFF10B981) else Color(0xFFEF4444)
+
+    // Apply points to profile once when finished
+    var pointsApplied by remember { mutableStateOf(false) }
+    val profileViewModel: ProfileViewModel = viewModel()
+    
+    LaunchedEffect(isWin, pointsApplied) {
+        if (!pointsApplied) {
+            val userProfile = profileViewModel.userProfile.value
+            val pxDiff = if (isWin) 50 else -20
+            val newTotalPoints = (userProfile.totalPoints + pxDiff).coerceAtLeast(0)
+            val newXp = (userProfile.xp + pxDiff).coerceAtLeast(0)
+            
+            profileViewModel.updateProfileData(userProfile.copy(
+                totalPoints = newTotalPoints,
+                xp = newXp
+            ))
+            pointsApplied = true
+        }
+    }
 
     Column(
         modifier = Modifier

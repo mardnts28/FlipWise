@@ -25,15 +25,44 @@ import java.util.*
 @Composable
 fun CreateGoalDialog(
     decks: List<com.flipwise.app.data.model.Deck> = emptyList(),
+    existingGoal: Challenge? = null,
     onDismiss: () -> Unit, 
     onCreate: (Challenge) -> Unit
 ) {
-    var title by remember { mutableStateOf("") }
-    var target by remember { mutableStateOf("100") }
-    var type by remember { mutableStateOf("Cards Studied") }
-    var duration by remember { mutableStateOf("7") }
-    var selectedDeckId by remember { mutableStateOf<String?>(null) }
+    if (decks.isEmpty()) {
+        Dialog(onDismissRequest = onDismiss) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                shape = RoundedCornerShape(28.dp),
+                color = Color.White
+            ) {
+                Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.Flag, contentDescription = null, tint = GrapePop, modifier = Modifier.size(64.dp))
+                    Spacer(Modifier.height(16.dp))
+                    Text("No Decks Available", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NavyInk)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "You need to create at least one deck before you can set a study goal.",
+                        fontSize = 14.sp, color = Color.Gray,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth().height(50.dp), colors = ButtonDefaults.buttonColors(containerColor = GrapePop)) {
+                        Text("Got it")
+                    }
+                }
+            }
+        }
+        return
+    }
+
+    var title by remember { mutableStateOf(existingGoal?.name ?: "") }
+    var target by remember { mutableStateOf(existingGoal?.goal?.toString() ?: "100") }
+    var type by remember { mutableStateOf(existingGoal?.goalType ?: "Cards Studied") }
+    var duration by remember { mutableStateOf(existingGoal?.let { ((it.endDate - System.currentTimeMillis()) / 86400000).coerceAtLeast(1).toString() } ?: "7") }
+    var selectedDeckId by remember { mutableStateOf<String?>(existingGoal?.deckIds?.takeIf { it.isNotBlank() }) }
     var expandedDecks by remember { mutableStateOf(false) }
+    var showValidationError by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -50,7 +79,7 @@ fun CreateGoalDialog(
                         Icon(Icons.Default.Flag, contentDescription = null, tint = GrapePop)
                     }
                     Spacer(Modifier.width(16.dp))
-                    Text("Set Personal Goal", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NavyInk)
+                    Text(if (existingGoal != null) "Edit Personal Goal" else "Set Personal Goal", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NavyInk)
                 }
 
                 Spacer(Modifier.height(24.dp))
@@ -160,20 +189,33 @@ fun CreateGoalDialog(
 
                 Spacer(Modifier.height(32.dp))
 
+                if (showValidationError) {
+                    Text(
+                        "Please fill all required fields correctly (Target and Duration > 0)",
+                        color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                }
+
                 Button(
                     onClick = {
+                        val parsedTarget = target.toIntOrNull() ?: 0
+                        val parsedDuration = duration.toLongOrNull() ?: 0L
+                        if (title.isBlank() || parsedTarget <= 0 || parsedDuration <= 0) {
+                            showValidationError = true
+                            return@Button
+                        }
                         onCreate(Challenge(
-                            id = UUID.randomUUID().toString(),
-                            name = title.ifBlank { "Study Goal" },
+                            id = existingGoal?.id ?: UUID.randomUUID().toString(),
+                            name = title,
                             description = "Personal Achievement",
                             type = "personal",
-                            goal = target.toIntOrNull() ?: 100,
+                            goal = parsedTarget,
                             goalType = type,
-                            startDate = System.currentTimeMillis(),
-                            endDate = System.currentTimeMillis() + (duration.toLongOrNull() ?: 7) * 86400000,
+                            startDate = existingGoal?.startDate ?: System.currentTimeMillis(),
+                            endDate = existingGoal?.startDate?.let { it + parsedDuration * 86400000 } ?: (System.currentTimeMillis() + parsedDuration * 86400000),
                             status = "active",
-                            createdBy = "local_user",
-                            participants = "local_user",
+                            createdBy = existingGoal?.createdBy ?: "local_user",
+                            participants = existingGoal?.participants ?: "local_user",
                             deckIds = selectedDeckId ?: ""
                         ))
                     },
@@ -181,7 +223,7 @@ fun CreateGoalDialog(
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = GrapePop)
                 ) {
-                    Text("Start Journey", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text(if (existingGoal != null) "Save Changes" else "Start Journey", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 }
             }
         }

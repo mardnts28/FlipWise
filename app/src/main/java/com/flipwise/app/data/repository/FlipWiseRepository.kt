@@ -4,6 +4,7 @@ import android.content.Context
 import com.flipwise.app.data.database.AppDatabase
 import com.flipwise.app.data.model.*
 import com.google.firebase.auth.FirebaseAuth
+import java.util.UUID
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.Flow
@@ -306,6 +307,28 @@ class FlipWiseRepository(context: Context) {
         remoteDatabase.child("users").child(userId).child("challenges").child(challenge.id).setValue(challenge).await()
     }
 
+    suspend fun updateChallenge(challenge: Challenge) {
+        appDatabase.challengeDao().updateChallenge(challenge)
+        remoteDatabase.child("users").child(userId).child("challenges").child(challenge.id).setValue(challenge).await()
+    }
+
+    suspend fun getActivePersonalGoals(): List<Challenge> {
+        return appDatabase.challengeDao().getActivePersonalGoals()
+    }
+
+    /**
+     * Get sessions relevant to a specific goal, filtering by deckId if the goal
+     * is scoped to a specific deck, and only sessions after the goal's start date.
+     */
+    suspend fun getSessionsForGoal(goal: Challenge): List<StudySession> {
+        val sessions = sessionDao.getSessionsSince(goal.startDate)
+        return if (goal.deckIds.isNotBlank()) {
+            sessions.filter { it.deckId == goal.deckIds }
+        } else {
+            sessions
+        }
+    }
+
     suspend fun joinChallenge(challengeId: String, userProfile: UserProfile) {
         val participant = mapOf(
             "userId" to userId,
@@ -472,11 +495,22 @@ class FlipWiseRepository(context: Context) {
             "currentStreak" to 0,
             "totalCardsStudied" to 0
         )
+
+        // Notification for them
+        val notificationData = mapOf(
+            "id" to UUID.randomUUID().toString(),
+            "type" to "friend_accepted",
+            "title" to "Friend Request Accepted",
+            "message" to "${currentProfile.displayName} accepted your friend request!",
+            "timestamp" to now,
+            "read" to false
+        )
         
-        // Atomic multi-path update: both sides become "accepted" at once
+        // Atomic multi-path update: both sides become "accepted" and notification is sent
         val updates = hashMapOf<String, Any>(
             "users/$userId/friends/${friend.id}" to myEntryData,
-            "users/${friend.id}/friends/$userId" to theirEntryData
+            "users/${friend.id}/friends/$userId" to theirEntryData,
+            "users/${friend.id}/notifications/${notificationData["id"]}" to notificationData
         )
         remoteDatabase.updateChildren(updates).await()
         

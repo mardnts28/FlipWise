@@ -15,6 +15,13 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     private val auditLogDao =
         com.flipwise.app.data.database.AppDatabase.getDatabase(application).auditLogDao()
 
+    private val _lastAcceptedFriend = MutableStateFlow<Friend?>(null)
+    val lastAcceptedFriend: StateFlow<Friend?> = _lastAcceptedFriend.asStateFlow()
+
+    fun clearAcceptedFriend() {
+        _lastAcceptedFriend.value = null
+    }
+
     private fun logAction(action: String, details: String = "") {
         viewModelScope.launch {
             val uid = repository.userId ?: "anonymous"
@@ -97,6 +104,10 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    suspend fun updateProfileData(profile: UserProfile) {
+        repository.updateProfile(profile)
     }
 
     suspend fun isUsernameTaken(username: String): Boolean {
@@ -225,7 +236,13 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     fun acceptFriendRequest(friend: Friend) {
         viewModelScope.launch {
-            repository.acceptFriendRequest(friend)
+            try {
+                repository.acceptFriendRequest(friend)
+                _lastAcceptedFriend.value = friend
+                logAction("FRIEND_ACCEPTED", "friendId=${friend.id} username=${friend.username}")
+            } catch (e: Exception) {
+                android.util.Log.e("VM_ERROR", "Accept friend request failed: ${e.message}")
+            }
         }
     }
 

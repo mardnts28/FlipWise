@@ -167,11 +167,14 @@ fun LeaderboardScreen(
                 when (selectedTab) {
                     0 -> RankingList(leaderboard, userProfile)
                     1 -> {
+                        // Refresh goals on tab view to auto-expire/complete
+                        LaunchedEffect(Unit) { deckViewModel.refreshGoals() }
+
                         val personalGoals = challenges.filter { it.type == "personal" }
                         if (personalGoals.isEmpty()) {
                             com.flipwise.app.ui.screens.EmptyStateView(
                                 icon = Icons.Rounded.Flag,
-                                title = "No active goals",
+                                title = "No goals yet",
                                 description = "Set a personal goal to track your study progress!"
                             )
                         } else {
@@ -182,47 +185,120 @@ fun LeaderboardScreen(
                             ) {
                                 items(personalGoals.size) { index ->
                                     val goal = personalGoals[index]
-                                    
-                                    val currentProgress = when(goal.goalType) {
-                                        "Cards Studied" -> allSessions.filter { it.date >= goal.startDate }.sumOf { it.cardsStudied }
-                                        "Points Earned" -> allSessions.filter { it.date >= goal.startDate }.sumOf { it.pointsEarned }
-                                        "Streak Days" -> progress.currentStreak // Bounded by current streak
-                                        else -> 0
+                                    val isCompleted = goal.status == "completed"
+                                    val isExpired = goal.status == "expired"
+                                    val isActive = goal.status == "active"
+
+                                    // Calculate progress correctly by filtering sessions by deck
+                                    val currentProgress = if (isActive) {
+                                        val relevantSessions = if (goal.deckIds.isNotBlank()) {
+                                            allSessions.filter { it.date >= goal.startDate && it.deckId == goal.deckIds }
+                                        } else {
+                                            allSessions.filter { it.date >= goal.startDate }
+                                        }
+                                        when(goal.goalType) {
+                                            "Cards Studied" -> relevantSessions.sumOf { it.cardsStudied }
+                                            "Points Earned" -> relevantSessions.sumOf { it.pointsEarned }
+                                            "Streak Days" -> progress.currentStreak
+                                            else -> 0
+                                        }
+                                    } else if (isCompleted) {
+                                        goal.goal // Show as 100% for completed
+                                    } else {
+                                        0 // Expired
                                     }
-                                    
-                                    val percentage = (currentProgress.toFloat() / goal.goal.toFloat()).coerceIn(0f, 1f)
+
+                                    val percentage = (currentProgress.toFloat() / goal.goal.toFloat().coerceAtLeast(1f)).coerceIn(0f, 1f)
+
+                                    // Status-based styling
+                                    val cardColor = when {
+                                        isCompleted -> Color(0xFFF0FDF4)
+                                        isExpired -> Color(0xFFFEF2F2)
+                                        else -> Color.White
+                                    }
+                                    val accentColor = when {
+                                        isCompleted -> Color(0xFF10B981)
+                                        isExpired -> Color(0xFFF43F5E)
+                                        else -> GrapePop
+                                    }
 
                                     Surface(
                                         modifier = Modifier.fillMaxWidth(),
                                         shape = RoundedCornerShape(24.dp),
-                                        color = Color.White
+                                        color = cardColor
                                     ) {
                                         Column(modifier = Modifier.padding(16.dp)) {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Rounded.Flag, contentDescription = null, tint = GrapePop)
+                                                // Status icon
+                                                val statusIcon = when {
+                                                    isCompleted -> Icons.Rounded.CheckCircle
+                                                    isExpired -> Icons.Rounded.Cancel
+                                                    else -> Icons.Rounded.Flag
+                                                }
+                                                Icon(statusIcon, contentDescription = null, tint = accentColor)
                                                 Spacer(Modifier.width(8.dp))
-                                                Text(goal.name, fontWeight = FontWeight.Bold, color = com.flipwise.app.ui.theme.NavyInk, fontSize = 16.sp)
-                                                Spacer(Modifier.weight(1f))
                                                 Text(
-                                                    "${((goal.endDate - System.currentTimeMillis()) / 86400000).coerceAtLeast(0)}d left",
-                                                    color = Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.SemiBold
+                                                    goal.name,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = com.flipwise.app.ui.theme.NavyInk,
+                                                    fontSize = 16.sp,
+                                                    modifier = Modifier.weight(1f)
                                                 )
+
+                                                // Status badge
+                                                Surface(
+                                                    shape = RoundedCornerShape(12.dp),
+                                                    color = accentColor.copy(alpha = 0.1f)
+                                                ) {
+                                                    Text(
+                                                        text = when {
+                                                            isCompleted -> "✅ Completed"
+                                                            isExpired -> "⏰ Expired"
+                                                            else -> "${((goal.endDate - System.currentTimeMillis()) / 86400000).coerceAtLeast(0)}d left"
+                                                        },
+                                                        color = accentColor,
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                                    )
+                                                }
                                             }
+
                                             Spacer(Modifier.height(12.dp))
-                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
                                                 Text(
                                                     "Target: ${goal.goal} ${goal.goalType}",
                                                     color = Color.Gray, fontSize = 14.sp
                                                 )
-                                                Text("$currentProgress / ${goal.goal}", color = GrapePop, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                                Text(
+                                                    "$currentProgress / ${goal.goal}",
+                                                    color = accentColor,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 14.sp
+                                                )
                                             }
                                             Spacer(Modifier.height(8.dp))
                                             LinearProgressIndicator(
                                                 progress = { percentage },
                                                 modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
-                                                color = if (percentage >= 1f) Color(0xFF10B981) else GrapePop,
+                                                color = accentColor,
                                                 trackColor = Color.LightGray.copy(alpha = 0.3f)
                                             )
+
+                                            // Completed bonus
+                                            if (isCompleted) {
+                                                Spacer(Modifier.height(8.dp))
+                                                Text(
+                                                    "🎉 +50 Bonus XP Earned!",
+                                                    color = Color(0xFF10B981),
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
                                         }
                                     }
                                 }

@@ -17,14 +17,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import com.flipwise.app.data.model.Challenge
 import com.flipwise.app.ui.theme.*
+import com.flipwise.app.viewmodel.DeckViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.database.FirebaseDatabase
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChallengeDetailScreen(
     challengeId: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    deckViewModel: DeckViewModel = viewModel()
 ) {
+    val decks by deckViewModel.decks.collectAsState(initial = emptyList())
     var challenge by remember { mutableStateOf<Challenge?>(null) }
     var participants by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
     
@@ -68,6 +72,9 @@ fun ChallengeDetailScreen(
                 } else {
                     VersusBoard(participants)
                 }
+                
+                Spacer(Modifier.height(24.dp))
+                MatchDetailsBoard(challenge!!, decks, participants)
                 
                 Spacer(Modifier.height(24.dp))
                 Text("Leaderboard", fontWeight = FontWeight.Bold, fontSize = 20.sp)
@@ -139,6 +146,32 @@ fun ParticipantItem(part: Map<String, Any>) {
                 if (part.containsKey("team")) Text("Team: ${part["team"]}", fontSize = 11.sp, color = Color.Gray)
             }
             Text(part["score"].toString(), fontWeight = FontWeight.Bold, color = GrapePop, fontSize = 18.sp)
+        }
+    }
+}
+
+@Composable
+fun MatchDetailsBoard(challenge: Challenge, decks: List<com.flipwise.app.data.model.Deck>, participants: List<Map<String, Any>>) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color(0xFFF9F9FB),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Match Details", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = NavyInk)
+            Spacer(Modifier.height(12.dp))
+            val timeMins = challenge.timeLimit / 60
+            Text("⏱ Time Limit: $timeMins minutes", fontSize = 14.sp, color = Color.Gray)
+            
+            val mappedDecks = challenge.deckIds.split(",").mapNotNull { id -> decks.find { it.id.trim() == id.trim() }?.name }
+            val deckStr = if (mappedDecks.isEmpty()) "Unknown Deck" else mappedDecks.joinToString(", ")
+            Text("📚 Deck Used: $deckStr", fontSize = 14.sp, color = Color.Gray)
+            
+            if (participants.isNotEmpty() && challenge.status != "active") {
+                val winner = participants.first() // assuming sorted by score descending
+                val winnerName = winner["displayName"] as? String ?: "Player"
+                Text("🏆 Winner: $winnerName", fontSize = 14.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

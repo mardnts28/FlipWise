@@ -59,6 +59,8 @@ fun ProfileScreen(
     var showAddChallenge by remember { mutableStateOf(false) }
     var showEditProfile by remember { mutableStateOf(false) }
     var friendMessage by remember { mutableStateOf<String?>(null) }
+    val lastAccepted by viewModel.lastAcceptedFriend.collectAsState()
+    val activeFriends = friends.filter { it.status == "accepted" }
 
     // Show a snackbar for friend add feedback
     LaunchedEffect(friendMessage) {
@@ -140,7 +142,7 @@ fun ProfileScreen(
                 // Stats
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                     ProfileStatItem(profile.totalPoints.toString(), "Points")
-                    ProfileStatItem(friends.size.toString(), "Friends")
+                    ProfileStatItem(activeFriends.size.toString(), "Friends")
                     ProfileStatItem(if(profile.badges.isEmpty()) "0" else profile.badges.split(",").size.toString(), "Badges")
                 }
                 Spacer(Modifier.height(16.dp))
@@ -376,6 +378,25 @@ fun ProfileScreen(
                     )
                 }
             }
+        }
+
+        // Confirmation Dialog for Accepted Friend
+        lastAccepted?.let { friend ->
+            AlertDialog(
+                onDismissRequest = { viewModel.clearAcceptedFriend() },
+                title = { Text("Friend Accepted!", fontWeight = FontWeight.Bold) },
+                text = { Text("You have accepted ${friend.displayName} (@${friend.username})") },
+                confirmButton = {
+                    Button(
+                        onClick = { viewModel.clearAcceptedFriend() },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
+                    ) {
+                        Text("Great!")
+                    }
+                },
+                shape = RoundedCornerShape(24.dp),
+                containerColor = Color.White
+            )
         }
     }
 

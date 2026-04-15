@@ -33,7 +33,7 @@ import com.flipwise.app.viewmodel.DeckViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 import com.flipwise.app.viewmodel.ProfileViewModel
-import com.flipwise.app.ui.components.CreateChallengeDialog
+import com.flipwise.app.ui.components.CreateGoalDialog
 import androidx.compose.material.icons.filled.AddCircleOutline
 
 @Composable
@@ -190,12 +190,12 @@ fun AchievementsScreen(
     val decks by viewModel.decks.collectAsState(initial = emptyList())
 
     if (showCreateGoalDialog) {
-        CreateChallengeDialog(
-            friends = friends,
+        CreateGoalDialog(
             decks = decks,
             onDismiss = { showCreateGoalDialog = false },
             onCreate = { challenge ->
                 profileViewModel.addChallenge(challenge)
+                viewModel.refreshGoals()
                 showCreateGoalDialog = false
             }
         )

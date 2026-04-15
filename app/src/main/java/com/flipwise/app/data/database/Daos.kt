@@ -111,8 +111,14 @@ interface ChallengeDao {
     @Query("SELECT * FROM challenges ORDER BY startDate DESC")
     fun getAllChallenges(): Flow<List<Challenge>>
 
+    @Query("SELECT * FROM challenges WHERE type = 'personal' AND status = 'active'")
+    suspend fun getActivePersonalGoals(): List<Challenge>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertChallenge(challenge: Challenge)
+
+    @Update
+    suspend fun updateChallenge(challenge: Challenge)
 
     @Query("DELETE FROM challenges WHERE id = :challengeId")
     suspend fun deleteChallenge(challengeId: String)
