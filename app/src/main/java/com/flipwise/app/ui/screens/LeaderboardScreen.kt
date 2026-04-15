@@ -153,17 +153,10 @@ fun LeaderboardScreen(
                         modifier = Modifier.weight(1f)
                     )
                     com.flipwise.app.ui.screens.TabButton(
-                        text = "Friends",
-                        icon = Icons.Rounded.People,
-                        isSelected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        modifier = Modifier.weight(1f)
-                    )
-                    com.flipwise.app.ui.screens.TabButton(
                         text = "Goals",
                         icon = Icons.Rounded.Flag,
-                        isSelected = selectedTab == 2,
-                        onClick = { selectedTab = 2 },
+                        isSelected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -174,19 +167,6 @@ fun LeaderboardScreen(
                 when (selectedTab) {
                     0 -> RankingList(leaderboard, userProfile)
                     1 -> {
-                        val friendUids = friends.filter { it.status == "accepted" }.map { it.id } + userProfile.id
-                        val friendLeaderboard = leaderboard.filter { friendUids.contains(it.id) }.sortedByDescending { it.totalPoints }
-                        if (friendLeaderboard.size <= 1) {
-                            com.flipwise.app.ui.screens.EmptyStateView(
-                                icon = Icons.Rounded.GroupAdd,
-                                title = "No friends yet",
-                                description = "Add friends to compete against them in the leaderboard!"
-                            )
-                        } else {
-                            RankingList(friendLeaderboard, userProfile)
-                        }
-                    }
-                    2 -> {
                         val personalGoals = challenges.filter { it.type == "personal" }
                         if (personalGoals.isEmpty()) {
                             com.flipwise.app.ui.screens.EmptyStateView(

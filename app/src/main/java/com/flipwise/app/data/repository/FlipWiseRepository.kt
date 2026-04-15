@@ -63,7 +63,6 @@ class FlipWiseRepository(context: Context) {
     suspend fun signUp(email: String, password: String): Result<Unit> {
         return try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
-            result.user?.sendEmailVerification()?.await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -73,10 +72,6 @@ class FlipWiseRepository(context: Context) {
     suspend fun signIn(email: String, password: String): Result<Unit> {
         return try {
             val result = auth.signInWithEmailAndPassword(email, password).await()
-            if (result.user?.isEmailVerified == false) {
-                auth.signOut()
-                throw Exception("Please verify your email address before logging in.")
-            }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -139,7 +134,6 @@ class FlipWiseRepository(context: Context) {
     suspend fun resendVerificationEmail(email: String, password: String): Result<Unit> {
         return try {
             val result = auth.signInWithEmailAndPassword(email, password).await()
-            result.user?.sendEmailVerification()?.await()
             auth.signOut()
             Result.success(Unit)
         } catch (e: Exception) {
