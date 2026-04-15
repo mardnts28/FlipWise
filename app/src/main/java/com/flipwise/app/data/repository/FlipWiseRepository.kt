@@ -184,7 +184,7 @@ class FlipWiseRepository(context: Context) {
     val userProfile: Flow<UserProfile?> = profileDao.getUserProfile()
 
     suspend fun updateProfile(profile: UserProfile) {
-        profileDao.insertProfile(profile)
+        profileDao.insertProfile(profile.copy(id = "local_user"))
         
         // Atomic multi-path update to keep private profile and public leaderboard in sync
         val updates = hashMapOf<String, Any>(
@@ -208,7 +208,7 @@ class FlipWiseRepository(context: Context) {
             val snapshot = remoteDatabase.child("users").child(userId).child("profile").get().await()
             val profile = snapshot.getValue(UserProfile::class.java)
             if (profile != null) {
-                profileDao.insertProfile(profile)
+                profileDao.insertProfile(profile.copy(id = "local_user"))
             }
             profile
         } catch (e: Exception) {
@@ -541,10 +541,22 @@ class FlipWiseRepository(context: Context) {
 
     suspend fun declineFriendRequest(friendId: String) {
         try {
+            val now = System.currentTimeMillis()
+            // Notification for them (optional, but requested)
+            val notificationData = mapOf(
+                "id" to UUID.randomUUID().toString(),
+                "type" to "friend_declined",
+                "title" to "Friend Request Declined",
+                "message" to "Your friend request was declined.",
+                "timestamp" to now,
+                "read" to false
+            )
+
             // Atomic multi-path update: remove from both users' friends lists at once
             val updates = hashMapOf<String, Any?>(
                 "users/$userId/friends/$friendId" to null,
-                "users/$friendId/friends/$userId" to null
+                "users/$friendId/friends/$userId" to null,
+                "users/$friendId/notifications/${notificationData["id"]}" to notificationData
             )
             @Suppress("UNCHECKED_CAST")
             remoteDatabase.updateChildren(updates as Map<String, Any>).await()

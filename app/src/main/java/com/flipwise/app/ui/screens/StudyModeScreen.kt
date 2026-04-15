@@ -70,8 +70,6 @@ fun StudyModeScreen(
         StudySummaryContent(
             cardsStudied = studyCards?.size ?: 0,
             easyCount = easyCount,
-            hardCount = hardCount,
-            forgotCount = forgotCount,
             pointsEarned = totalPoints,
             onStudyAgain = {
                 studyCards = dbCards.shuffled()
@@ -388,12 +386,19 @@ fun StudyRatingButton(emoji: String, label: String, color: Color, modifier: Modi
 fun StudySummaryContent(
     cardsStudied: Int,
     easyCount: Int,
-    hardCount: Int,
-    forgotCount: Int,
     pointsEarned: Int,
     onStudyAgain: () -> Unit,
     onBackToHome: () -> Unit
 ) {
+    val profileViewModel: com.flipwise.app.viewmodel.ProfileViewModel = viewModel()
+    val profile by profileViewModel.userProfile.collectAsState()
+    
+    // Check if user reached a new level (assuming 500 XP per level)
+    val totalXpAfter = profile.xp + pointsEarned
+    val currentLevel = profile.level
+    val nextLevel = (totalXpAfter / 500) + 1
+    val isLevelUp = nextLevel > currentLevel
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -439,15 +444,27 @@ fun StudySummaryContent(
                         Text("$cardsStudied", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
                     }
                 }
-                
-                Spacer(Modifier.height(16.dp))
-                HorizontalDivider(color = Color(0xFFF3F4F6))
-                Spacer(Modifier.height(16.dp))
-                
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    SummaryItem("$easyCount", "Easy", Color(0xFF10B981), Modifier.weight(1f))
-                    SummaryItem("$hardCount", "Hard", Color(0xFFF97316), Modifier.weight(1f))
-                    SummaryItem("$forgotCount", "Forgot", Color(0xFFF43F5E), Modifier.weight(1f))
+            }
+        }
+
+        if (isLevelUp) {
+            Spacer(Modifier.height(16.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                color = Color(0xFF10B981)
+            ) {
+                Row(modifier = Modifier.padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(modifier = Modifier.size(48.dp), shape = CircleShape, color = Color.White.copy(alpha = 0.2f)) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Bolt, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
+                        }
+                    }
+                    Spacer(Modifier.width(16.dp))
+                    Column {
+                        Text("LEVEL UP!", fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f), fontWeight = FontWeight.Bold)
+                        Text("Reached Level $nextLevel", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
                 }
             }
         }

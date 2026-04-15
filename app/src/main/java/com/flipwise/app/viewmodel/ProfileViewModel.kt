@@ -15,6 +15,11 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     private val auditLogDao =
         com.flipwise.app.data.database.AppDatabase.getDatabase(application).auditLogDao()
 
+    private val achievementDao =
+        com.flipwise.app.data.database.AppDatabase.getDatabase(application).achievementDao()
+
+    val achievements: Flow<List<Achievement>> = achievementDao.getAllAchievements()
+
     private val _lastAcceptedFriend = MutableStateFlow<Friend?>(null)
     val lastAcceptedFriend: StateFlow<Friend?> = _lastAcceptedFriend.asStateFlow()
 

@@ -360,7 +360,7 @@ fun AchievementsUnlockedDialog(
                         Text(
                             if (unlockedAchievements.isNotEmpty()) 
                                 "${unlockedAchievements.size} Achievement${if(unlockedAchievements.size > 1) "s" else ""} on this day!"
-                            else "Keep studying to earn badges!",
+                            else "Keep learning to earn badges! 🚀",
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp
@@ -514,7 +514,7 @@ fun MonthlyActivityCalendar(
                                         if (dayAchievements.isNotEmpty()) Color(0xFFFBBF24) else if (isToday) Color(0xFF10B981) else Color.Transparent,
                                         CircleShape
                                     )
-                                    .clickable(enabled = studyCount > 0 || dayAchievements.isNotEmpty()) {
+                                    .clickable {
                                         onDayClick(tempCal.timeInMillis, dayAchievements)
                                     },
                                 contentAlignment = Alignment.Center

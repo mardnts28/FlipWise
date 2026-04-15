@@ -53,10 +53,10 @@ fun ProfileScreen(
     val decks by viewModel.decks.collectAsState(initial = emptyList())
     val challenges by viewModel.challenges.collectAsState(initial = emptyList())
     val recentSessions by viewModel.recentSessions.collectAsState(initial = emptyList())
+    val achievements by viewModel.achievements.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     
     var selectedTab by remember { mutableIntStateOf(initialTab) }
-    var showAddFriend by remember { mutableStateOf(false) }
     var showAddChallenge by remember { mutableStateOf(false) }
     var showEditProfile by remember { mutableStateOf(false) }
     var friendMessage by remember { mutableStateOf<String?>(null) }
@@ -144,7 +144,8 @@ fun ProfileScreen(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                     ProfileStatItem(profile.totalPoints.toString(), "Points")
                     ProfileStatItem(activeFriends.size.toString(), "Friends")
-                    ProfileStatItem(if(profile.badges.isEmpty()) "0" else profile.badges.split(",").size.toString(), "Badges")
+                    val unlockedCount = achievements.count { it.isUnlocked }
+                    ProfileStatItem(unlockedCount.toString(), "Badges")
                 }
                 Spacer(Modifier.height(16.dp))
             }
@@ -166,17 +167,10 @@ fun ProfileScreen(
                     modifier = Modifier.weight(1f)
                 )
                 TabButton(
-                    text = "Friends",
-                    icon = Icons.Default.People,
-                    isSelected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    modifier = Modifier.weight(1f)
-                )
-                TabButton(
                     text = "Challenges",
                     icon = Icons.Rounded.Groups,
-                    isSelected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
+                    isSelected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -202,78 +196,6 @@ fun ProfileScreen(
                     }
                 }
                 1 -> {
-                    val pendingRequests = friends.filter { it.status == "pending" }
-                    val activeFriends = friends.filter { it.status == "accepted" }
-                    val sentRequests = friends.filter { it.status == "sent" }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Friends", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
-                        Button(
-                            onClick = { showAddFriend = true },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
-                        ) {
-                            Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Add Friend")
-                        }
-                    }
-                    
-                    if (pendingRequests.isNotEmpty()) {
-                        Spacer(Modifier.height(24.dp))
-                        Text("Pending Requests", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
-                        Spacer(Modifier.height(12.dp))
-                        pendingRequests.forEach { request ->
-                            FriendRequestItem(
-                                request = request,
-                                onAccept = { viewModel.acceptFriendRequest(request) },
-                                onDecline = { viewModel.declineFriendRequest(request.id) },
-                                onClick = { onNavigateToOtherProfile(request.id) }
-                            )
-                            Spacer(Modifier.height(8.dp))
-                        }
-                    }
-
-                    Spacer(Modifier.height(24.dp))
-                    Text("My Friends (${activeFriends.size})", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
-                    Spacer(Modifier.height(12.dp))
-                    
-                    if (activeFriends.isEmpty() && sentRequests.isEmpty()) {
-                        EmptyStateView(
-                            icon = Icons.Default.PeopleOutline,
-                            title = "No friends yet",
-                            description = "Add friends to compete together!"
-                        )
-                    } else {
-                        activeFriends.forEach { friend ->
-                            FriendItem(
-                                friend = friend, 
-                                onDelete = { viewModel.removeFriend(friend.id) },
-                                onClick = { onNavigateToOtherProfile(friend.id) }
-                            )
-                            Spacer(Modifier.height(12.dp))
-                        }
-                        
-                        if (sentRequests.isNotEmpty()) {
-                            Spacer(Modifier.height(16.dp))
-                            Text("Sent Requests", fontSize = 14.sp, color = Color.Gray)
-                            Spacer(Modifier.height(8.dp))
-                            sentRequests.forEach { friend ->
-                                FriendItem(
-                                    friend = friend, 
-                                    onDelete = { viewModel.removeFriend(friend.id) },
-                                    onClick = { onNavigateToOtherProfile(friend.id) }
-                                )
-                                Spacer(Modifier.height(12.dp))
-                            }
-                        }
-                    }
-                }
-                2 -> {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -309,7 +231,6 @@ fun ProfileScreen(
                             )
                             Spacer(Modifier.height(12.dp))
                         }
-                    }
                     }
                 }
             }
@@ -347,22 +268,6 @@ fun ProfileScreen(
             )
         }
 
-        if (showAddFriend) {
-            AddFriendStyledDialog(
-                onDismiss = { showAddFriend = false },
-                onAdd = { username ->
-                    scope.launch {
-                        val result = viewModel.addFriend(username)
-                        if (result.isSuccess) {
-                            friendMessage = "Friend request sent!"
-                        } else {
-                            friendMessage = result.exceptionOrNull()?.message ?: "Failed to add friend"
-                        }
-                    }
-                    showAddFriend = false
-                }
-            )
-        }
 
         // Friend feedback message banner
         friendMessage?.let { msg ->
@@ -409,7 +314,7 @@ fun ProfileScreen(
             )
         }
     }
-
+}
 
 @Composable
 fun RecentActivityItem(session: StudySession) {
@@ -641,79 +546,6 @@ fun EmptyStateView(icon: ImageVector, title: String, description: String) {
             Spacer(Modifier.height(16.dp))
             Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
             Text(description, fontSize = 14.sp, color = Color.Gray, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 32.dp))
-        }
-    }
-}
-
-@Composable
-fun AddFriendStyledDialog(onDismiss: () -> Unit, onAdd: (String) -> Unit) {
-    var username by remember { mutableStateOf("") }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(28.dp),
-            color = Color.White,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp)
-            ) {
-                Text(
-                    text = "Add Friend",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1E1B4B)
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = "Enter your friend's username to add them",
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
-                
-                Spacer(Modifier.height(24.dp))
-                
-                TextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    placeholder = { Text("Username", color = Color.LightGray) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(16.dp)),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    )
-                )
-                
-                Spacer(Modifier.height(24.dp))
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f).height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, Color(0xFFE5E7EB))
-                    ) {
-                        Text("Cancel", color = Color(0xFF1E1B4B), fontWeight = FontWeight.Bold)
-                    }
-                    Button(
-                        onClick = { onAdd(username) },
-                        modifier = Modifier.weight(1f).height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-                        enabled = username.isNotBlank()
-                    ) {
-                        Text("Add Friend", fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
         }
     }
 }

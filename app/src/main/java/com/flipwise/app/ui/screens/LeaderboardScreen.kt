@@ -32,6 +32,15 @@ import com.flipwise.app.ui.components.CreateGoalDialog
 import com.flipwise.app.ui.theme.*
 import com.flipwise.app.viewmodel.ProfileViewModel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import java.util.Date
+import java.text.SimpleDateFormat
+import java.util.Locale
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.draw.clip
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +59,8 @@ fun LeaderboardScreen(
     val progress by deckViewModel.userProgress.collectAsState()
     
     var showGoalDialog by remember { mutableStateOf(false) }
+    var showAddFriend by remember { mutableStateOf(false) }
+    var friendMessage by remember { mutableStateOf<String?>(null) }
     var selectedTab by remember { mutableIntStateOf(0) } // 0: Global, 1: Friends, 2: Goals
     val scope = rememberCoroutineScope()
 
@@ -69,14 +80,25 @@ fun LeaderboardScreen(
     Scaffold(
         containerColor = GhostWhite,
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { showGoalDialog = true },
-                containerColor = GrapePop,
-                contentColor = Color.White,
-                shape = RoundedCornerShape(20.dp),
-                icon = { Icon(Icons.Rounded.Flag, "Add Goal") },
-                text = { Text("Set Goal") }
-            )
+            if (selectedTab == 1) {
+                ExtendedFloatingActionButton(
+                    onClick = { showAddFriend = true },
+                    containerColor = GrapePop,
+                    contentColor = Color.White,
+                    shape = RoundedCornerShape(20.dp),
+                    icon = { Icon(Icons.Rounded.PersonAdd, "Add Friend") },
+                    text = { Text("Add Friend") }
+                )
+            } else if (selectedTab == 2 || selectedTab == 0) {
+                ExtendedFloatingActionButton(
+                    onClick = { showGoalDialog = true },
+                    containerColor = GrapePop,
+                    contentColor = Color.White,
+                    shape = RoundedCornerShape(20.dp),
+                    icon = { Icon(Icons.Rounded.Flag, "Add Goal") },
+                    text = { Text("Set Goal") }
+                )
+            }
         }
     ) { padding ->
         Column(
@@ -129,7 +151,11 @@ fun LeaderboardScreen(
                     Spacer(Modifier.height(16.dp))
 
                     Text(
-                        text = "Real-time\nLeaderboard",
+                        text = when(selectedTab) {
+                            1 -> "My\nFriends"
+                            2 -> "Study\nAmbitions"
+                            else -> "Real-time\nLeaderboard"
+                        },
                         color = Color.White,
                         fontSize = 32.sp,
                         fontWeight = FontWeight.ExtraBold,
@@ -174,14 +200,48 @@ fun LeaderboardScreen(
             Box(modifier = Modifier.fillMaxSize()) {
                 when (selectedTab) {
                     0 -> RankingList(leaderboard, userProfile, onNavigateToProfile)
-                    1 -> FriendsRankingList(friends, userProfile, onNavigateToProfile)
+                    1 -> {
+                        val pendingRequests = friends.filter { it.status == "pending" }
+                        Column {
+                            if (pendingRequests.isNotEmpty()) {
+                                Text(
+                                    "Pending Friend Requests",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NavyInk,
+                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp)
+                                )
+                                Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                                    pendingRequests.forEach { request ->
+                                        FriendRequestItem(
+                                            request = request,
+                                            onAccept = { viewModel.acceptFriendRequest(request) },
+                                            onDecline = { viewModel.declineFriendRequest(request.id) },
+                                            onClick = { onNavigateToProfile(request.id) }
+                                        )
+                                        Spacer(Modifier.height(12.dp))
+                                    }
+                                }
+                                Spacer(Modifier.height(24.dp))
+                                
+                                Text(
+                                    "Friends Ranking",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NavyInk,
+                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                                )
+                            }
+                            FriendsRankingList(friends, userProfile, onNavigateToProfile)
+                        }
+                    }
                     2 -> {
                         // Refresh goals on tab view to auto-expire/complete
                         LaunchedEffect(Unit) { deckViewModel.refreshGoals() }
 
                         val personalGoals = challenges.filter { it.type == "personal" }
                         if (personalGoals.isEmpty()) {
-                            com.flipwise.app.ui.screens.EmptyStateView(
+                            EmptyStateView(
                                 icon = Icons.Rounded.Flag,
                                 title = "No goals yet",
                                 description = "Set a personal goal to track your study progress!"
@@ -317,6 +377,129 @@ fun LeaderboardScreen(
                 }
             }
         }
+
+        if (showAddFriend) {
+            AddFriendStyledDialog(
+                onDismiss = { showAddFriend = false },
+                onAdd = { username ->
+                    scope.launch {
+                        val result = viewModel.addFriend(username)
+                        if (result.isSuccess) {
+                            friendMessage = "Friend request sent!"
+                        } else {
+                            friendMessage = result.exceptionOrNull()?.message ?: "Failed to add friend"
+                        }
+                    }
+                    showAddFriend = false
+                }
+            )
+        }
+
+        // Friend feedback message banner
+        friendMessage?.let { msg ->
+            androidx.compose.animation.AnimatedVisibility(
+                visible = true,
+                enter = androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.fadeOut()
+            ) {
+                Box(modifier = Modifier.fillMaxSize().padding(bottom = 100.dp), contentAlignment = Alignment.BottomCenter) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (msg.contains("sent")) Color(0xFF10B981) else Color(0xFFEF4444),
+                        shadowElevation = 4.dp
+                    ) {
+                        Text(
+                            text = msg,
+                            modifier = Modifier.padding(16.dp),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+            // Auto hide
+            LaunchedEffect(msg) {
+                delay(3000)
+                friendMessage = null
+            }
+        }
+    }
+}
+
+@Composable
+fun AddFriendStyledDialog(onDismiss: () -> Unit, onAdd: (String) -> Unit) {
+    var username by remember { mutableStateOf("") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = Color.White,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp)
+            ) {
+                Text(
+                    text = "Add Friend",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E1B4B)
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = "Enter your friend's username to add them",
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+                
+                Spacer(Modifier.height(24.dp))
+                
+                TextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    placeholder = { Text("Username", color = Color.LightGray) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(16.dp)),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    )
+                )
+                
+                Spacer(Modifier.height(24.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, Color(0xFFE5E7EB))
+                    ) {
+                        Text("Cancel", color = Color(0xFF1E1B4B), fontWeight = FontWeight.Bold)
+                    }
+                    Button(
+                        onClick = { onAdd(username) },
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
+                        enabled = username.isNotBlank()
+                    ) {
+                        Text("Add Friend", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -331,7 +514,7 @@ fun RankingList(leaderboard: List<UserProfile>, userProfile: UserProfile, onNavi
             LeaderboardItem(
                 rank    = index + 1,
                 profile = profile,
-                isMe    = profile.id == userProfile.id,
+                isMe    = profile.username == userProfile.username,
                 onClick = { onNavigateToProfile(profile.id) }
             )
         }
@@ -449,7 +632,7 @@ fun FriendsRankingList(
             LeaderboardItem(
                 rank = index + 1,
                 profile = profile,
-                isMe = profile.id == userProfile.id,
+                isMe = profile.username == userProfile.username,
                 onClick = { onNavigateToProfile(profile.id) }
             )
         }
