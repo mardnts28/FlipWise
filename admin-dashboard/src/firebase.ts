@@ -2,18 +2,16 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 
-// TO CONNECT TO YOUR DATABASE:
-// 1. Go to Firebase Console > Project Settings
-// 2. Add a 'Web' application
-// 3. Replace the placeholder values below with your actual Firebase config
+// Firebase configuration for FlipWise Web App
 const firebaseConfig = {
-  apiKey: "REPLACE_WITH_YOUR_API_KEY",
+  apiKey: "AIzaSyD52TRomk1F9geaEwM63CZCNAbyciTOqOE",
   authDomain: "flipwise-dc052.firebaseapp.com",
   databaseURL: "https://flipwise-dc052-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "flipwise-dc052",
   storageBucket: "flipwise-dc052.firebasestorage.app",
-  messagingSenderId: "REPLACE_WITH_ID",
-  appId: "REPLACE_WITH_APP_ID"
+  messagingSenderId: "307290224469",
+  appId: "1:307290224469:web:100dcb98dd4ac79e3f21dc",
+  measurementId: "G-ZGF8CB7WNM"
 };
 
 // Initialize Firebase
