@@ -377,9 +377,6 @@ class FlipWiseRepository(context: Context) {
                 .await()
             
             val child = snapshot.children.firstOrNull() ?: return null
-            // Manually extract fields instead of relying on getValue(UserProfile::class.java)
-            // because Kotlin data classes with val properties can fail Firebase deserialization,
-            // causing the id to default to "local_user" and showing the wrong user.
             val data = child.value as? Map<*, *> ?: return null
             val resolvedId = child.key ?: return null
             
@@ -394,6 +391,25 @@ class FlipWiseRepository(context: Context) {
             )
         } catch (e: Exception) {
             android.util.Log.e("FRIEND_SEARCH", "findUserByUsername failed: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun fetchPublicProfile(uid: String): UserProfile? {
+        return try {
+            val snapshot = remoteDatabase.child("leaderboard").child(uid).get().await()
+            val data = snapshot.value as? Map<*, *> ?: return null
+            
+            UserProfile(
+                id = uid,
+                username = data["username"] as? String ?: "",
+                displayName = data["displayName"] as? String ?: "User",
+                avatar = data["avatar"] as? String ?: "🎓",
+                totalPoints = (data["totalPoints"] as? Number)?.toInt() ?: 0,
+                xp = (data["xp"] as? Number)?.toInt() ?: 0,
+                level = (data["level"] as? Number)?.toInt() ?: 1
+            )
+        } catch (e: Exception) {
             null
         }
     }
@@ -465,7 +481,7 @@ class FlipWiseRepository(context: Context) {
     }
 
     suspend fun acceptFriendRequest(friend: Friend) {
-        val currentProfile = userProfile.firstOrNull() ?: UserProfile(id = userId)
+        val currentProfile = syncProfile() ?: userProfile.firstOrNull() ?: UserProfile(id = userId)
         val now = System.currentTimeMillis()
         
         // My entry: update their request in my list to "accepted"
@@ -492,7 +508,7 @@ class FlipWiseRepository(context: Context) {
             "status" to "accepted",
             "addedAt" to now,
             "totalPoints" to currentProfile.totalPoints,
-            "currentStreak" to 0,
+            "currentStreak" to 0, // We could sync this too if desired
             "totalCardsStudied" to 0
         )
 
@@ -506,16 +522,21 @@ class FlipWiseRepository(context: Context) {
             "read" to false
         )
         
-        // Atomic multi-path update: both sides become "accepted" and notification is sent
-        val updates = hashMapOf<String, Any>(
-            "users/$userId/friends/${friend.id}" to myEntryData,
-            "users/${friend.id}/friends/$userId" to theirEntryData,
-            "users/${friend.id}/notifications/${notificationData["id"]}" to notificationData
-        )
-        remoteDatabase.updateChildren(updates).await()
-        
-        // Keep local DB in sync
-        appDatabase.friendDao().insertFriend(friend.copy(status = "accepted"))
+        try {
+            // Atomic multi-path update: both sides become "accepted" and notification is sent
+            val updates = hashMapOf<String, Any>(
+                "users/$userId/friends/${friend.id}" to myEntryData,
+                "users/${friend.id}/friends/$userId" to theirEntryData,
+                "users/${friend.id}/notifications/${notificationData["id"]}" to notificationData
+            )
+            remoteDatabase.updateChildren(updates).await()
+            
+            // Keep local DB in sync
+            appDatabase.friendDao().insertFriend(friend.copy(status = "accepted"))
+        } catch (e: Exception) {
+            android.util.Log.e("FRIEND_ACCEPT", "Failed to accept friend request: ${e.message}")
+            throw e
+        }
     }
 
     suspend fun declineFriendRequest(friendId: String) {

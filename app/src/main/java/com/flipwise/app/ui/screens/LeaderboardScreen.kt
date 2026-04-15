@@ -37,6 +37,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun LeaderboardScreen(
     onBack: () -> Unit,
+    onNavigateToProfile: (String) -> Unit,
     viewModel: ProfileViewModel = viewModel(),
     deckViewModel: com.flipwise.app.viewmodel.DeckViewModel = viewModel()
 ) {
@@ -153,10 +154,17 @@ fun LeaderboardScreen(
                         modifier = Modifier.weight(1f)
                     )
                     com.flipwise.app.ui.screens.TabButton(
-                        text = "Goals",
-                        icon = Icons.Rounded.Flag,
+                        text = "Friends",
+                        icon = Icons.Rounded.People,
                         isSelected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
+                        modifier = Modifier.weight(1f)
+                    )
+                    com.flipwise.app.ui.screens.TabButton(
+                        text = "Goals",
+                        icon = Icons.Rounded.Flag,
+                        isSelected = selectedTab == 2,
+                        onClick = { selectedTab = 2 },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -165,8 +173,9 @@ fun LeaderboardScreen(
             // Tab Content
             Box(modifier = Modifier.fillMaxSize()) {
                 when (selectedTab) {
-                    0 -> RankingList(leaderboard, userProfile)
-                    1 -> {
+                    0 -> RankingList(leaderboard, userProfile, onNavigateToProfile)
+                    1 -> FriendsRankingList(friends, userProfile, onNavigateToProfile)
+                    2 -> {
                         // Refresh goals on tab view to auto-expire/complete
                         LaunchedEffect(Unit) { deckViewModel.refreshGoals() }
 
@@ -312,7 +321,7 @@ fun LeaderboardScreen(
 }
 
 @Composable
-fun RankingList(leaderboard: List<UserProfile>, userProfile: UserProfile) {
+fun RankingList(leaderboard: List<UserProfile>, userProfile: UserProfile, onNavigateToProfile: (String) -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp, start = 20.dp, end = 20.dp),
@@ -322,16 +331,17 @@ fun RankingList(leaderboard: List<UserProfile>, userProfile: UserProfile) {
             LeaderboardItem(
                 rank    = index + 1,
                 profile = profile,
-                isMe    = profile.id == userProfile.id
+                isMe    = profile.id == userProfile.id,
+                onClick = { onNavigateToProfile(profile.id) }
             )
         }
     }
 }
 
 @Composable
-fun LeaderboardItem(rank: Int, profile: UserProfile, isMe: Boolean) {
+fun LeaderboardItem(rank: Int, profile: UserProfile, isMe: Boolean, onClick: () -> Unit) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape    = RoundedCornerShape(24.dp),
         color    = if (isMe) GrapePop.copy(alpha = 0.05f) else Color.White,
         border   = if (isMe) androidx.compose.foundation.BorderStroke(1.5.dp, GrapePop.copy(alpha = 0.3f)) else null,
@@ -406,6 +416,42 @@ fun LeaderboardItem(rank: Int, profile: UserProfile, isMe: Boolean) {
                 )
                 Text("POINTS", color = NavyInk.copy(alpha = 0.3f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
+        }
+    }
+}
+
+@Composable
+fun FriendsRankingList(
+    friends: List<Friend>,
+    userProfile: UserProfile,
+    onNavigateToProfile: (String) -> Unit
+) {
+    val sortedFriends = friends.filter { it.status == "accepted" }
+        .sortedByDescending { it.totalPoints }
+
+    // Combine with current user
+    val combinedList = (sortedFriends.map {
+        UserProfile(
+            id = it.id,
+            displayName = it.displayName,
+            username = it.username,
+            avatar = it.avatar,
+            totalPoints = it.totalPoints
+        )
+    } + userProfile).sortedByDescending { it.totalPoints }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp, start = 20.dp, end = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        itemsIndexed(combinedList) { index, profile ->
+            LeaderboardItem(
+                rank = index + 1,
+                profile = profile,
+                isMe = profile.id == userProfile.id,
+                onClick = { onNavigateToProfile(profile.id) }
+            )
         }
     }
 }

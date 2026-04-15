@@ -42,6 +42,9 @@ sealed class Screen(val route: String) {
     object Otp : Screen("otp/{email}") {
         fun createRoute(email: String) = "otp/$email"
     }
+    object OtherProfile : Screen("other_profile/{userId}") {
+        fun createRoute(userId: String) = "other_profile/$userId"
+    }
 }
 
 @Composable
@@ -257,12 +260,20 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
             ProfileScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToChallengeGame = { id -> navController.navigate(Screen.ChallengeGame.createRoute(id)) },
+                onNavigateToOtherProfile = { userId ->
+                    navController.navigate(Screen.OtherProfile.createRoute(userId))
+                },
                 initialTab = initialTab
             )
         }
 
         composable(Screen.Leaderboard.route) {
-            LeaderboardScreen(onBack = { navController.popBackStack() })
+            LeaderboardScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToProfile = { userId ->
+                    navController.navigate(Screen.OtherProfile.createRoute(userId))
+                }
+            )
         }
 
         composable(
@@ -286,6 +297,17 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
                 }
+            )
+        }
+
+        composable(
+            route = Screen.OtherProfile.route,
+            arguments = listOf(navArgument("userId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId") ?: return@composable
+            OtherProfileScreen(
+                userId = userId,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

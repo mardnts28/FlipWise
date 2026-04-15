@@ -44,6 +44,7 @@ import kotlinx.coroutines.launch
 fun ProfileScreen(
     onNavigateBack: () -> Unit,
     onNavigateToChallengeGame: (String) -> Unit,
+    onNavigateToOtherProfile: (String) -> Unit,
     initialTab: Int = 0,
     viewModel: ProfileViewModel = viewModel()
 ) {
@@ -230,7 +231,8 @@ fun ProfileScreen(
                             FriendRequestItem(
                                 request = request,
                                 onAccept = { viewModel.acceptFriendRequest(request) },
-                                onDecline = { viewModel.declineFriendRequest(request.id) }
+                                onDecline = { viewModel.declineFriendRequest(request.id) },
+                                onClick = { onNavigateToOtherProfile(request.id) }
                             )
                             Spacer(Modifier.height(8.dp))
                         }
@@ -248,7 +250,11 @@ fun ProfileScreen(
                         )
                     } else {
                         activeFriends.forEach { friend ->
-                            FriendItem(friend = friend, onDelete = { viewModel.removeFriend(friend.id) })
+                            FriendItem(
+                                friend = friend, 
+                                onDelete = { viewModel.removeFriend(friend.id) },
+                                onClick = { onNavigateToOtherProfile(friend.id) }
+                            )
                             Spacer(Modifier.height(12.dp))
                         }
                         
@@ -257,7 +263,11 @@ fun ProfileScreen(
                             Text("Sent Requests", fontSize = 14.sp, color = Color.Gray)
                             Spacer(Modifier.height(8.dp))
                             sentRequests.forEach { friend ->
-                                FriendItem(friend = friend, onDelete = { viewModel.removeFriend(friend.id) })
+                                FriendItem(
+                                    friend = friend, 
+                                    onDelete = { viewModel.removeFriend(friend.id) },
+                                    onClick = { onNavigateToOtherProfile(friend.id) }
+                                )
                                 Spacer(Modifier.height(12.dp))
                             }
                         }
@@ -709,9 +719,9 @@ fun AddFriendStyledDialog(onDismiss: () -> Unit, onAdd: (String) -> Unit) {
 }
 
 @Composable
-fun FriendRequestItem(request: Friend, onAccept: () -> Unit, onDecline: () -> Unit) {
+fun FriendRequestItem(request: Friend, onAccept: () -> Unit, onDecline: () -> Unit, onClick: () -> Unit) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         color = Color(0xFFF5F3FF),
         border = BorderStroke(1.dp, Color(0xFFDDD6FE))
@@ -754,9 +764,9 @@ fun FriendRequestItem(request: Friend, onAccept: () -> Unit, onDecline: () -> Un
 }
 
 @Composable
-fun FriendItem(friend: Friend, onDelete: () -> Unit) {
+fun FriendItem(friend: Friend, onDelete: () -> Unit, onClick: () -> Unit) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
         shadowElevation = 1.dp

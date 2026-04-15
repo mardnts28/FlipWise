@@ -18,8 +18,22 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     private val _lastAcceptedFriend = MutableStateFlow<Friend?>(null)
     val lastAcceptedFriend: StateFlow<Friend?> = _lastAcceptedFriend.asStateFlow()
 
+    private val _otherUser = MutableStateFlow<UserProfile?>(null)
+    val otherUser: StateFlow<UserProfile?> = _otherUser.asStateFlow()
+
     fun clearAcceptedFriend() {
         _lastAcceptedFriend.value = null
+    }
+
+    fun fetchOtherUser(uid: String) {
+        viewModelScope.launch {
+            _otherUser.value = null
+            try {
+                _otherUser.value = repository.fetchPublicProfile(uid)
+            } catch (e: Exception) {
+                android.util.Log.e("VM_ERROR", "Failed to fetch other user: ${e.message}")
+            }
+        }
     }
 
     private fun logAction(action: String, details: String = "") {
