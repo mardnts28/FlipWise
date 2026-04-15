@@ -1,0 +1,44 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid",
+        "friends": {
+          "$friendId": {
+            ".write": "auth != null && (auth.uid == $uid || (auth.uid == $friendId && (!newData.exists() || newData.child('status').val() == 'pending' || (data.exists() && newData.child('status').val() == 'accepted'))))",
+            ".validate": "newData.hasChildren(['id', 'userId', 'username', 'displayName', 'status'])"
+          }
+        }
+      }
+    },
+    "leaderboard": {
+      ".read": "auth != null",
+      ".indexOn": [
+        "username",
+        "totalPoints"
+      ],
+      "$uid": {
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "challenges": {
+      ".read": "auth != null",
+      "$challengeId": {
+        "participants": {
+          "$uid": {
+            ".write": "auth != null && auth.uid == $uid"
+          }
+        }
+      }
+    },
+    "community_decks": {
+      ".read": true,
+      ".write": "root.child('users').child(auth.uid).child('profile').child('role').val() == 'admin'"
+    },
+    "audit_logs": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}
