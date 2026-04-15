@@ -302,6 +302,33 @@ class FlipWiseRepository(context: Context) {
         awaitClose { ref.removeEventListener(listener) }
     }
 
+    fun getGlobalChallengesFlow(): Flow<List<Challenge>> = callbackFlow {
+        val ref = remoteDatabase.child("challenges")
+        val listener = object : com.google.firebase.database.ValueEventListener {
+            override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                val list = snapshot.children.mapNotNull { child ->
+                    val data = child.value as? Map<*, *> ?: return@mapNotNull null
+                    Challenge(
+                        id = child.key ?: "",
+                        name = data["name"] as? String ?: "",
+                        description = data["description"] as? String ?: "",
+                        goal = (data["goal"] as? Number)?.toInt() ?: 0,
+                        goalType = data["goalType"] as? String ?: "Cards",
+                        status = data["status"] as? String ?: "active",
+                        startDate = (data["startDate"] as? Number)?.toLong() ?: 0L,
+                        endDate = (data["endDate"] as? Number)?.toLong() ?: 0L
+                    )
+                }.filter { it.status == "active" && it.endDate > System.currentTimeMillis() }
+                trySend(list)
+            }
+            override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                close(error.toException())
+            }
+        }
+        ref.addValueEventListener(listener)
+        awaitClose { ref.removeEventListener(listener) }
+    }
+
     // --- Challenges ---
     suspend fun addChallenge(challenge: Challenge) {
         appDatabase.challengeDao().insertChallenge(challenge)

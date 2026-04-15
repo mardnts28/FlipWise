@@ -58,6 +58,7 @@ fun LeaderboardScreen(
     val challenges by viewModel.challenges.collectAsState(initial = emptyList())
     val allSessions by viewModel.allSessions.collectAsState(initial = emptyList())
     val progress by deckViewModel.userProgress.collectAsState()
+    val globalChallenges by viewModel.globalChallenges.collectAsState(initial = emptyList())
     
     var showGoalDialog by remember { mutableStateOf(false) }
     var showAddFriend by remember { mutableStateOf(false) }
@@ -201,7 +202,53 @@ fun LeaderboardScreen(
             // Tab Content
             Box(modifier = Modifier.fillMaxSize()) {
                 when (selectedTab) {
-                    0 -> RankingList(leaderboard, userProfile, onNavigateToProfile)
+                    0 -> {
+                        Column {
+                            if (globalChallenges.isNotEmpty()) {
+                                Text(
+                                    "Platform Events",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NavyInk,
+                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                                )
+                                androidx.compose.foundation.lazy.LazyRow(
+                                    contentPadding = PaddingValues(horizontal = 24.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier.padding(bottom = 12.dp)
+                                ) {
+                                    items(globalChallenges.size) { index ->
+                                        val challenge = globalChallenges[index]
+                                        Surface(
+                                            shape = RoundedCornerShape(20.dp),
+                                            color = Color(0xFFF5F3FF),
+                                            border = BorderStroke(1.dp, GrapePop.copy(alpha = 0.2f)),
+                                            modifier = Modifier.width(280.dp)
+                                        ) {
+                                            Column(modifier = Modifier.padding(16.dp)) {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(Icons.Rounded.Bolt, "Event", tint = GrapePop, modifier = Modifier.size(16.dp))
+                                                    Spacer(Modifier.width(4.dp))
+                                                    Text(challenge.goalType.uppercase(), color = GrapePop, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                                Text(challenge.name, fontWeight = FontWeight.Bold, color = NavyInk, fontSize = 16.sp)
+                                                Spacer(Modifier.height(4.dp))
+                                                Text(challenge.description, color = Color.Gray, fontSize = 12.sp, maxLines = 1)
+                                                Spacer(Modifier.height(8.dp))
+                                                LinearProgressIndicator(
+                                                    progress = { 0.3f }, // Dummy progress for global goal (would need aggregation)
+                                                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+                                                    color = GrapePop,
+                                                    trackColor = Color.White
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            RankingList(leaderboard, userProfile, onNavigateToProfile)
+                        }
+                    }
                     1 -> {
                         val pendingRequests = friends.filter { it.status == "pending" }
                         Column {

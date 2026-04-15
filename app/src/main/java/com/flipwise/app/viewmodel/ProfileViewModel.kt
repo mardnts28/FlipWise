@@ -82,6 +82,8 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     val decks: Flow<List<Deck>> = repository.allDecks
 
     val challenges: Flow<List<Challenge>> = repository.getActiveChallenges()
+    
+    val globalChallenges: Flow<List<Challenge>> = repository.getGlobalChallengesFlow()
 
     val recentSessions: Flow<List<StudySession>> = repository.sessions.map { it.take(5) }
 
