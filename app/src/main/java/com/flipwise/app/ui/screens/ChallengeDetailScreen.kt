@@ -8,10 +8,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
@@ -26,13 +28,16 @@ import com.google.firebase.database.FirebaseDatabase
 fun ChallengeDetailScreen(
     challengeId: String,
     onBack: () -> Unit,
+    profileViewModel: com.flipwise.app.viewmodel.ProfileViewModel = viewModel(),
     deckViewModel: DeckViewModel = viewModel()
 ) {
     val decks by deckViewModel.decks.collectAsState(initial = emptyList())
+    val userProfile by profileViewModel.userProfile.collectAsState()
     var challenge by remember { mutableStateOf<Challenge?>(null) }
     var participants by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
     
     val ref = FirebaseDatabase.getInstance().reference.child("challenges").child(challengeId)
+    val isParticipant = participants.any { it["userId"] == userProfile.id }
 
     DisposableEffect(challengeId) {
         val listener = ref.addValueEventListener(object : com.google.firebase.database.ValueEventListener {
@@ -51,36 +56,120 @@ fun ChallengeDetailScreen(
     }
 
     Scaffold(
+        containerColor = GhostWhite,
         topBar = {
-            TopAppBar(
-                title = { Text(challenge?.name ?: "Challenge Detail", color = Color.White) },
+            CenterAlignedTopAppBar(
+                title = { Text(challenge?.name ?: "Challenge Detail", fontWeight = FontWeight.ExtraBold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = GrapePop)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.White,
+                    titleContentColor = NavyInk
+                )
             )
         }
     ) { padding ->
         if (challenge == null) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = GrapePop) }
         } else {
-            Column(modifier = Modifier.padding(padding).padding(16.dp)) {
-                if (challenge?.type == "team") {
-                    TeamScoreBoard(participants)
-                } else {
-                    VersusBoard(participants)
-                }
-                
-                Spacer(Modifier.height(24.dp))
-                MatchDetailsBoard(challenge!!, decks, participants)
-                
-                Spacer(Modifier.height(24.dp))
-                Text("Leaderboard", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+            Column(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp)
+            ) {
                 Spacer(Modifier.height(16.dp))
                 
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Progress Card for the Event
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(28.dp),
+                    color = Color.White,
+                    shadowElevation = 2.dp
+                ) {
+                    Column(modifier = Modifier.padding(24.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = GrapePop.copy(alpha = 0.1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.EmojiEvents,
+                                    contentDescription = null,
+                                    tint = GrapePop,
+                                    modifier = Modifier.padding(8.dp).size(20.dp)
+                                )
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text(challenge?.goalType?.uppercase() ?: "CHALLENGE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = GrapePop)
+                                Text(challenge?.name ?: "", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = NavyInk)
+                            }
+                        }
+                        
+                        Spacer(Modifier.height(16.dp))
+                        Text(challenge?.description ?: "", color = Color.Gray, fontSize = 14.sp)
+                        
+                        Spacer(Modifier.height(24.dp))
+                        
+                        // Tracking real-time total (Global Progress)
+                        val totalCards = participants.sumOf { it["score"] as? Long ?: 0L }
+                        val goal = challenge?.goal?.toLong()?.coerceAtLeast(1L) ?: 1L
+                        val progress = (totalCards.toFloat() / goal.toFloat()).coerceIn(0f, 1f)
+                        
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Event Progress", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("${totalCards.toLocaleString()} / ${goal.toLocaleString()}", color = GrapePop, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier.fillMaxWidth().height(12.dp).clip(CircleShape),
+                            color = GrapePop,
+                            trackColor = Color(0xFFF1F5F9) // ghost white / gray
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                // Join Button Section
+                if (!isParticipant) {
+                    Button(
+                        onClick = { profileViewModel.joinGlobalChallenge(challengeId) },
+                        modifier = Modifier.fillMaxWidth().height(64.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = GrapePop)
+                    ) {
+                        Text("Join Global Event", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color(0xFFF0FDF4),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF10B981).copy(alpha = 0.2f))
+                    ) {
+                        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                            Icon(androidx.compose.material.icons.Icons.Rounded.CheckCircle, contentDescription = null, tint = Color(0xFF10B981))
+                            Spacer(Modifier.width(8.dp))
+                            Text("You are participating in this event!", color = Color(0xFF10B981), fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(32.dp))
+                
+                Text("Top Participants", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = NavyInk)
+                Spacer(Modifier.height(16.dp))
+                
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 32.dp)
+                ) {
                     items(participants) { part ->
                         ParticipantItem(part)
                     }
@@ -89,6 +178,9 @@ fun ChallengeDetailScreen(
         }
     }
 }
+
+// Extension to format Long
+fun Long.toLocaleString(): String = java.text.NumberFormat.getInstance().format(this)
 
 @Composable
 fun TeamScoreBoard(participants: List<Map<String, Any>>) {

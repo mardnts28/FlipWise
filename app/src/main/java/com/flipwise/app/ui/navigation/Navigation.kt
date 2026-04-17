@@ -283,6 +283,9 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                 onNavigateToProfile = { userId ->
                     navController.navigate(Screen.OtherProfile.createRoute(userId))
                 },
+                onNavigateToChallengeDetail = { challengeId ->
+                    navController.navigate(Screen.ChallengeDetail.createRoute(challengeId))
+                },
                 initialTab = initialTab
             )
         }

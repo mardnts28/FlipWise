@@ -284,6 +284,17 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun joinGlobalChallenge(challengeId: String) {
+        viewModelScope.launch {
+            try {
+                repository.joinChallenge(challengeId, userProfile.value)
+                logAction("CHALLENGE_JOINED", "challengeId=$challengeId")
+            } catch (e: Exception) {
+                android.util.Log.e("VM_ERROR", "Join challenge failed: ${e.message}")
+            }
+        }
+    }
+
     suspend fun updateTotpSecret(secret: String) {
         val current = userProfile.value
         repository.updateProfile(current.copy(totpSecret = secret))

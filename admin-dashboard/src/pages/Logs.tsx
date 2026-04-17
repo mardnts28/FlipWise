@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ShieldAlert, User, Database, Globe, Clock, ArrowRight, Loader2 } from 'lucide-react';
 import { rtdb } from '../firebase';
 import { ref, onValue } from 'firebase/database';

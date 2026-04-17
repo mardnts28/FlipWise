@@ -47,6 +47,7 @@ import androidx.compose.ui.draw.clip
 fun LeaderboardScreen(
     onBack: () -> Unit,
     onNavigateToProfile: (String) -> Unit,
+    onNavigateToChallengeDetail: (String) -> Unit,
     initialTab: Int = 0,
     viewModel: ProfileViewModel = viewModel(),
     deckViewModel: com.flipwise.app.viewmodel.DeckViewModel = viewModel()
@@ -223,7 +224,9 @@ fun LeaderboardScreen(
                                             shape = RoundedCornerShape(20.dp),
                                             color = Color(0xFFF5F3FF),
                                             border = BorderStroke(1.dp, GrapePop.copy(alpha = 0.2f)),
-                                            modifier = Modifier.width(280.dp)
+                                            modifier = Modifier
+                                                .width(280.dp)
+                                                .clickable { onNavigateToChallengeDetail(challenge.id) }
                                         ) {
                                             Column(modifier = Modifier.padding(16.dp)) {
                                                 Row(verticalAlignment = Alignment.CenterVertically) {

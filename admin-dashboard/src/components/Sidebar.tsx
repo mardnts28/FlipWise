@@ -1,8 +1,7 @@
-import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Library, Trophy, 
-  Bell, ShieldAlert, Zap, LogOut 
+  Bell, ShieldAlert, LogOut 
 } from 'lucide-react';
 import { auth } from '../firebase';
 

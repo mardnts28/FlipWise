@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Send, Bell, History, Loader2, CheckCircle2 } from 'lucide-react';
 import { rtdb } from '../firebase';
-import { ref, onValue, push, set, get } from 'firebase/database';
+import { ref, onValue, push, set } from 'firebase/database';
 
 interface Broadcast {
   id: string;

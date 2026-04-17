@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { Search, UserCog, ShieldCheck, Mail, Calendar, Ban, Loader2 } from 'lucide-react';
-import { rtdb } from '../firebase';
+import { useEffect, useState } from 'react';
+import { Search, UserCog, ShieldCheck, Ban, Loader2 } from 'lucide-react';
+import { rtdb, auth } from '../firebase';
 import { ref, onValue, update } from 'firebase/database';
 
 interface User {
@@ -188,10 +188,10 @@ const UserManagement = () => {
                 <td style={{ padding: '20px 24px', color: '#64748B', fontSize: '0.875rem' }}>{user.role}</td>
                 <td style={{ padding: '20px 24px' }}>
                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button style={{ p: '8px', borderRadius: '10px', background: '#F1F5F9', color: '#64748B' }} title="Profile Settings"><UserCog size={18} /></button>
+                      <button style={{ padding: '8px', borderRadius: '10px', background: '#F1F5F9', color: '#64748B' }} title="Profile Settings"><UserCog size={18} /></button>
                       <button 
                         onClick={() => handleStatusChange(user.id, user.status === 'Active' ? 'Banned' : 'Active')}
-                        style={{ p: '8px', borderRadius: '10px', background: user.status === 'Active' ? '#FEE2E2' : '#D1FAE5', color: user.status === 'Active' ? '#EF4444' : '#059669' }} 
+                        style={{ padding: '8px', borderRadius: '10px', background: user.status === 'Active' ? '#FEE2E2' : '#D1FAE5', color: user.status === 'Active' ? '#EF4444' : '#059669' }} 
                         title={user.status === 'Active' ? "Ban User" : "Unban User"}
                       >
                         <Ban size={18} />

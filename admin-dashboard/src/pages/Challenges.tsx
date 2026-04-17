@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { TrendingUp, Users, Target, Calendar, Plus, Loader2, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Plus, Loader2, Trash2 } from 'lucide-react';
 import { rtdb } from '../firebase';
 import { ref, onValue, push, set, remove } from 'firebase/database';
 

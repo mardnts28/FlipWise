@@ -19,12 +19,14 @@ Whether you're studying for finals or learning a new language, FlipWise makes th
 
 ### ⚔️ Competitive & Social Learning
 *   **Real-time Leaderboard**: See where you stand globally with a premium, live-updating ranking system.
+*   **Interactive Global Events**: Platform-wide challenges are now clickable! Join community goals and track your contribution to collective milestones in real-time.
 *   **Friend Social Circle**: Find classmates by their unique username and build your study network.
 *   **Versus Battles**: Challenge friends directly. Track scores side-by-side as you both study.
 *   **Team Challenges**: Join forces in community-wide Blue vs. Red team battles. 
 
 ### 💎 Premium User Experience
 *   **Unified Design Language**: A sleek, modern "CoralZest" and "GrapePop" theme throughout the app.
+*   **Two-Factor Admin Security**: The Admin Dashboard is hardened with mandatory OTP verification to prevent unauthorized access.
 *   **Gamified Progress**: Earn XP and level up as you study. Your competitive wins contribute to your global standing.
 *   **Privacy First**: Built-in screenshot and recording protection for your study content.
 *   **Cloud Persistence**: Real-time sync with Firebase ensures your decks and friend lists are safe and available on any device.

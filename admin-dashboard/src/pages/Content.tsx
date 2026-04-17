@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Package, Star, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Package, Star, Trash2, Loader2 } from 'lucide-react';
 import { rtdb } from '../firebase';
 import { ref, onValue, remove, update } from 'firebase/database';
 

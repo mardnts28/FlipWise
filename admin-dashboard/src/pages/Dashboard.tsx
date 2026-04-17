@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { Users, BookOpen, BrainCircuit, Activity, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Users, BookOpen, Activity, Loader2 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, BarChart, Bar 
+  Tooltip, ResponsiveContainer 
 } from 'recharts';
 import { rtdb } from '../firebase';
 import { ref, onValue } from 'firebase/database';

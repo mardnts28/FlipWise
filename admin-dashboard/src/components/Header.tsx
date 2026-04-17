@@ -1,5 +1,4 @@
-import React from 'react';
-import { Search, MapPin, Calendar as CalIcon } from 'lucide-react';
+import { Search, Calendar as CalIcon } from 'lucide-react';
 
 const Header = () => {
   const today = new Date().toLocaleDateString('en-US', { 
