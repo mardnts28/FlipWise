@@ -19,6 +19,7 @@ Whether you're studying for finals or learning a new language, FlipWise makes th
 
 ### ⚔️ Competitive & Social Learning
 *   **Real-time Leaderboard**: See where you stand globally with a premium, live-updating ranking system.
+*   **System Notifications & Alerts**: Stay informed with platform-wide announcements and private, targeted messages from administrative staff, delivered in real-time.
 *   **Interactive Global Events**: Platform-wide challenges are now clickable! Join community goals and track your contribution to collective milestones in real-time.
 *   **Friend Social Circle**: Find classmates by their unique username and build your study network.
 *   **Versus Battles**: Challenge friends directly. Track scores side-by-side as you both study.

@@ -305,4 +305,14 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     val currentUserEmail: String
         get() = repository.currentUserEmail
+
+    val publicAnnouncement: Flow<Map<String, Any>?> = repository.getPublicAnnouncementFlow()
+    
+    val privateNotifications: Flow<List<Map<String, Any>>> = repository.getTargetedNotificationsFlow()
+
+    fun markNotificationAsRead(id: String) {
+        viewModelScope.launch {
+            repository.markNotificationAsRead(id)
+        }
+    }
 }

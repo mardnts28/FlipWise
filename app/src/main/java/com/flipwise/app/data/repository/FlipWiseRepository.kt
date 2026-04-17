@@ -655,4 +655,46 @@ class FlipWiseRepository(context: Context) {
         ref.addValueEventListener(listener)
         awaitClose { ref.removeEventListener(listener) }
     }
+
+    fun getPublicAnnouncementFlow(): Flow<Map<String, Any>?> = callbackFlow {
+        val ref = remoteDatabase.child("public_announcements")
+        val listener = object : com.google.firebase.database.ValueEventListener {
+            override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                val data = snapshot.value as? Map<String, Any>
+                trySend(data)
+            }
+            override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                close(error.toException())
+            }
+        }
+        ref.addValueEventListener(listener)
+        awaitClose { ref.removeEventListener(listener) }
+    }
+
+    fun getTargetedNotificationsFlow(): Flow<List<Map<String, Any>>> = callbackFlow {
+        if (!isUserLoggedIn()) {
+            trySend(emptyList())
+            return@callbackFlow
+        }
+        val ref = remoteDatabase.child("users").child(userId).child("notifications")
+        val listener = object : com.google.firebase.database.ValueEventListener {
+            override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                val list = snapshot.children.mapNotNull { child ->
+                    val data = child.value as? Map<String, Any> ?: return@mapNotNull null
+                    data + ("id" to (child.key ?: ""))
+                }.sortedByDescending { it["timestamp"] as? Long ?: 0L }
+                trySend(list)
+            }
+            override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                close(error.toException())
+            }
+        }
+        ref.addValueEventListener(listener)
+        awaitClose { ref.removeEventListener(listener) }
+    }
+
+    suspend fun markNotificationAsRead(notificationId: String) {
+        if (!isUserLoggedIn()) return
+        remoteDatabase.child("users").child(userId).child("notifications").child(notificationId).child("read").setValue(true).await()
+    }
 }

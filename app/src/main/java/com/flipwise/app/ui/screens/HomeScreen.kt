@@ -1,5 +1,6 @@
 package com.flipwise.app.ui.screens
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,6 +12,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.Campaign
+import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
@@ -65,6 +68,22 @@ fun HomeScreen(
         decks.sortedByDescending { it.lastStudied ?: 0L }.take(4)
     }
 
+    // --- System Notifications Logic ---
+    val announcement by profileViewModel.publicAnnouncement.collectAsState(initial = null)
+    val privateNotes by profileViewModel.privateNotifications.collectAsState(initial = emptyList())
+    var dismissedAnnouncementTimestamp by remember { mutableStateOf(0L) }
+    
+    val activeAnnouncement = remember(announcement, dismissedAnnouncementTimestamp) {
+        announcement?.let { 
+            val ts = it["timestamp"] as? Long ?: 0L
+            if (ts > dismissedAnnouncementTimestamp) it else null
+        }
+    }
+
+    val unreadPrivateNote = remember(privateNotes) {
+        privateNotes.firstOrNull { it["read"] == false }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -72,6 +91,28 @@ fun HomeScreen(
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // --- Notification Overlay ---
+        Column(modifier = Modifier.widthIn(max = 1200.dp).fillMaxWidth().padding(horizontal = dimensions.paddingLarge)) {
+            // Priority 1: Private Alerts
+            unreadPrivateNote?.let { note ->
+                SystemNotificationCard(
+                    title = note["title"] as? String ?: "Notification",
+                    message = note["message"] as? String ?: "",
+                    isPrivate = true,
+                    onDismiss = { profileViewModel.markNotificationAsRead(note["id"] as String) }
+                )
+            }
+            // Priority 2: Public Announcements
+            activeAnnouncement?.let { note ->
+                SystemNotificationCard(
+                    title = note["title"] as? String ?: "Announcement",
+                    message = note["message"] as? String ?: "",
+                    isPrivate = false,
+                    onDismiss = { dismissedAnnouncementTimestamp = note["timestamp"] as Long }
+                )
+            }
+        }
+
         // --- Header Section ---
         Surface(
             modifier = Modifier
@@ -610,6 +651,72 @@ fun RecentDeckItem(deck: Deck, onClick: () -> Unit) {
             Column(horizontalAlignment = Alignment.End) {
                 Text("${deck.masteredCount}/${deck.cardCount}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E1B4B))
                 Text("mastered", fontSize = 11.sp, color = Color(0xFF10B981))
+            }
+        }
+    }
+}
+
+@Composable
+fun SystemNotificationCard(
+    title: String,
+    message: String,
+    isPrivate: Boolean,
+    onDismiss: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp, bottom = 8.dp)
+            .animateContentSize(),
+        shape = RoundedCornerShape(20.dp),
+        color = if (isPrivate) Color(0xFFF0F9FF) else Color(0xFFFFF7ED),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp, 
+            (if (isPrivate) Color(0xFF0369A1) else Color(0xFFC2410C)).copy(alpha = 0.2f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        if (isPrivate) Color(0xFF0369A1).copy(alpha = 0.1f) else Color(0xFFC2410C).copy(alpha = 0.1f),
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    if (isPrivate) Icons.Rounded.Shield else Icons.Rounded.Campaign,
+                    contentDescription = null,
+                    tint = if (isPrivate) Color(0xFF0369A1) else Color(0xFFC2410C),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = if (isPrivate) Color(0xFF1E3A8A) else Color(0xFF7C2D12)
+                )
+                Text(
+                    text = message,
+                    fontSize = 13.sp,
+                    color = (if (isPrivate) Color(0xFF1E3A8A) else Color(0xFF7C2D12)).copy(alpha = 0.7f),
+                    lineHeight = 18.sp
+                )
+            }
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    Icons.Default.Close, 
+                    contentDescription = "Dismiss", 
+                    tint = if (isPrivate) Color(0xFF0369A1) else Color(0xFFC2410C),
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }
