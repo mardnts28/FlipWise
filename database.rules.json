@@ -26,7 +26,8 @@
         "totalPoints"
       ],
       "$uid": {
-        ".write": "auth != null && auth.uid == $uid"
+        // Only server (Admin SDK) should write to leaderboard to prevent point tampering
+        ".write": "false"
       }
     },
     "challenges": {
@@ -34,22 +35,27 @@
       "$challengeId": {
         "participants": {
           "$uid": {
-            ".write": "auth != null && auth.uid == $uid"
+            ".write": "auth != null && auth.uid == $uid",
+            ".validate": "newData.hasChildren(['userId', 'score'])"
           }
         }
       }
     },
     "community_decks": {
       ".read": true,
-      ".write": "root.child('users').child(auth.uid).child('profile').child('role').val() == 'admin'"
+      ".write": "auth != null && root.child('users').child(auth.uid).child('profile').child('role').val() == 'admin'"
     },
     "audit_logs": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && root.child('users').child(auth.uid).child('profile').child('role').val() == 'admin'",
+      "$logId": {
+        // Users can push logs but never read or overwrite them
+        ".write": "auth != null && !data.exists()",
+        ".validate": "newData.hasChildren(['userId', 'action', 'timestamp'])"
+      }
     },
     "public_announcements": {
       ".read": true,
       ".write": "auth != null && root.child('users').child(auth.uid).child('profile').child('role').val() == 'admin'"
     }
   }
-}
+}
