@@ -17,7 +17,10 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(onNavigateNext: () -> Unit) {
-    val dimensions = FlipWiseDesign.dimensions
+    val logoSize = FlipWiseDesign.dimensions.logoSize
+    val headerSize = FlipWiseDesign.dimensions.headerFontSize
+    val detailSize = FlipWiseDesign.dimensions.detailFontSize
+
     LaunchedEffect(Unit) {
         delay(2000)
         onNavigateNext()
@@ -30,19 +33,19 @@ fun SplashScreen(onNavigateNext: () -> Unit) {
             Image(
                 painter = painterResource(id = R.drawable.app_logo),
                 contentDescription = "FlipWise Logo",
-                modifier = Modifier.size(dimensions.logoSize)
+                modifier = Modifier.size(logoSize)
             )
-            Spacer(Modifier.height(dimensions.paddingMedium))
+            Spacer(Modifier.height(24.dp))
             Text(
                 "FlipWise", 
-                fontSize = dimensions.headerFontSize, 
+                fontSize = headerSize, 
                 fontWeight = FontWeight.Bold, 
                 color = Color.White
             )
-            Spacer(Modifier.height(dimensions.paddingSmall))
+            Spacer(Modifier.height(8.dp))
             Text(
                 "Master your knowledge, one flip at a time", 
-                fontSize = dimensions.detailFontSize, 
+                fontSize = detailSize, 
                 color = Color.White.copy(alpha = 0.8f)
             )
         }
