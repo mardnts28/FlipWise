@@ -11,6 +11,11 @@
             ".write": "auth != null && (auth.uid == $uid || (auth.uid == $friendId && (!newData.exists() || newData.child('status').val() == 'pending' || (data.exists() && newData.child('status').val() == 'accepted'))))",
             ".validate": "newData.hasChildren(['id', 'userId', 'username', 'displayName', 'status'])"
           }
+        },
+        "notifications": {
+          "$notificationId": {
+            ".write": "auth != null && (auth.uid == $uid || (newData.exists() && (newData.child('type').val() == 'friend_accepted' || newData.child('type').val() == 'friend_declined')))"
+          }
         }
       }
     },
@@ -41,6 +46,10 @@
     "audit_logs": {
       ".read": "auth != null",
       ".write": "auth != null"
+    },
+    "public_announcements": {
+      ".read": true,
+      ".write": "auth != null && root.child('users').child(auth.uid).child('profile').child('role').val() == 'admin'"
     }
   }
 }
