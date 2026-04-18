@@ -38,6 +38,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
+                SQLiteDatabase.loadLibs(context)
                 val passphrase = SQLiteDatabase.getBytes("flipwise-secure-v1-key".toCharArray())
                 val factory = SupportFactory(passphrase)
 
