@@ -60,6 +60,14 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
         loadUserProgress()
         refreshGoals()
         
+        // React to auth changes
+        viewModelScope.launch {
+            repository.authStateFlow.collect { uid ->
+                loadUserProgress()
+                refreshGoals()
+            }
+        }
+        
         // Refresh AI insight when sessions or progress change
         viewModelScope.launch {
             combine(userProgress, sessions) { p, s -> p to s }
@@ -79,10 +87,8 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val existing = achievementDao.getAllAchievementsOnce()
             
-            // Check if we need to update (if count is different or we want to force refresh)
-            // To ensure the user gets the new list immediately, we'll refresh if the count isn't what we expect
+            // Check if we need to update definitions without wiping progress
             if (existing.size < 25) { 
-                achievementDao.deleteAllAchievements()
                 val list = mutableListOf<Achievement>()
                 
                 // Streaks
@@ -290,15 +296,8 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
                 )
             )
 
-            // Update local and cloud deck stats
-            val deck = AppDatabase.getDatabase(getApplication()).deckDao().getDeckById(deckId)
-            deck?.let {
-                val newMastered = (it.masteredCount + correctCount).coerceAtMost(it.cardCount)
-                repository.updateDeck(it.copy(
-                    lastStudied = System.currentTimeMillis(),
-                    masteredCount = newMastered
-                ))
-            }
+            // Update local and cloud deck stats using accurate calculation
+            updateDeckMastery(deckId)
             
             // Update active challenge scores
             repository.getActiveChallenges().first().forEach { challenge ->
@@ -346,6 +345,18 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
                     difficulty = rating
                 )
             )
+            updateDeckMastery(card.deckId)
+        }
+    }
+
+    private suspend fun updateDeckMastery(deckId: String) {
+        val deck = deckDao.getDeckById(deckId)
+        deck?.let {
+            val actualMasteredCount = cardDao.getMasteredCountForDeck(deckId)
+            repository.updateDeck(it.copy(
+                lastStudied = System.currentTimeMillis(),
+                masteredCount = actualMasteredCount
+            ))
         }
     }
 
@@ -634,10 +645,12 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
         if (sessions.isEmpty()) return 0
         val today = System.currentTimeMillis() / 1000 / 60 / 60 / 24
         val days  = sessions.map { it.date / 1000 / 60 / 60 / 24 }.sortedDescending().distinct()
-        if (days.isEmpty() || days.first() < today - 1) return 0
+        // Ensure we're only looking at current and past days
+        val activeDays = days.filter { it <= today }
+        if (activeDays.isEmpty() || activeDays.first() < today - 1) return 0
         var streak = 1
-        for (i in 1 until days.size) {
-            if (days[i - 1] - days[i] == 1L) streak++ else break
+        for (i in 1 until activeDays.size) {
+            if (activeDays[i - 1] - activeDays[i] == 1L) streak++ else break
         }
         return streak
     }

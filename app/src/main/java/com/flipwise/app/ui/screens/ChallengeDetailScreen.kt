@@ -38,8 +38,8 @@ fun ChallengeDetailScreen(
     
     val databaseUrl = "https://flipwise-dc052-default-rtdb.asia-southeast1.firebasedatabase.app"
     val ref = FirebaseDatabase.getInstance(databaseUrl).reference.child("challenges").child(challengeId)
-    val isParticipant = remember(participants, userProfile.id) {
-        participants.any { it["userId"] == userProfile.id }
+    val isParticipant = remember(participants, profileViewModel.currentUserId) {
+        participants.any { it["userId"] == profileViewModel.currentUserId }
     }
 
     DisposableEffect(challengeId) {
@@ -154,7 +154,7 @@ fun ChallengeDetailScreen(
 
                 Spacer(Modifier.height(24.dp))
 
-                // Join Button Section
+                // Join/Leave Button Section
                 if (!isParticipant) {
                     Button(
                         onClick = { profileViewModel.joinGlobalChallenge(challengeId) },
@@ -166,17 +166,16 @@ fun ChallengeDetailScreen(
                         Text("Join Organization", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
                 } else {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
+                    OutlinedButton(
+                        onClick = { profileViewModel.leaveGlobalChallenge(challengeId) },
+                        modifier = Modifier.fillMaxWidth().height(64.dp),
                         shape = RoundedCornerShape(20.dp),
-                        color = Color(0xFFF0FDF4),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF10B981).copy(alpha = 0.2f))
+                        border = androidx.compose.foundation.BorderStroke(2.dp, Color(0xFFEF4444).copy(alpha = 0.5f)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444))
                     ) {
-                        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                            Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = Color(0xFF10B981))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Successfully participating!", color = Color(0xFF10B981), fontWeight = FontWeight.Bold)
-                        }
+                        Icon(Icons.Rounded.Cancel, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Cancel Participation", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 

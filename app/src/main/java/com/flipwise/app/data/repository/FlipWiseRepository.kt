@@ -17,6 +17,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.*
 
 class FlipWiseRepository(context: Context) {
     private val repositoryScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -42,6 +44,15 @@ class FlipWiseRepository(context: Context) {
 
     val userId: String
         get() = auth.currentUser?.uid ?: "local_user"
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val authStateFlow: Flow<String> = callbackFlow {
+        val listener = FirebaseAuth.AuthStateListener { auth ->
+            trySend(auth.currentUser?.uid ?: "local_user")
+        }
+        auth.addAuthStateListener(listener)
+        awaitClose { auth.removeAuthStateListener(listener) }
+    }.stateIn(repositoryScope, SharingStarted.Eagerly, auth.currentUser?.uid ?: "local_user")
 
     fun isUserLoggedIn(): Boolean = auth.currentUser != null
 
@@ -181,7 +192,10 @@ class FlipWiseRepository(context: Context) {
     }
 
     // --- Profile ---
-    val userProfile: Flow<UserProfile?> = profileDao.getUserProfile()
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val userProfile: Flow<UserProfile?> = authStateFlow.flatMapLatest { uid ->
+        profileDao.getUserProfile()
+    }
 
     suspend fun updateProfile(profile: UserProfile) {
         profileDao.insertProfile(profile.copy(id = "local_user"))
@@ -259,7 +273,10 @@ class FlipWiseRepository(context: Context) {
     }
 
     // --- Sessions ---
-    val sessions: Flow<List<StudySession>> = sessionDao.getAllSessions(userId)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val sessions: Flow<List<StudySession>> = authStateFlow.flatMapLatest { uid ->
+        sessionDao.getAllSessions(uid)
+    }
 
     suspend fun saveSession(session: StudySession) {
         val userSession = session.copy(userId = userId)
@@ -351,7 +368,9 @@ class FlipWiseRepository(context: Context) {
     suspend fun getSessionsForGoal(goal: Challenge): List<StudySession> {
         val allSessions = sessionDao.getSessionsSince(userId, goal.startDate)
         return if (goal.deckIds.isNotBlank()) {
-            allSessions.filter { it.deckId == goal.deckIds }
+            val filterIds = goal.deckIds.split(",").filter { it.isNotBlank() }
+            if (filterIds.isEmpty()) allSessions 
+            else allSessions.filter { it.deckId in filterIds }
         } else {
             allSessions
         }
@@ -367,6 +386,10 @@ class FlipWiseRepository(context: Context) {
             "team" to if ((0..1).random() == 0) "Blue" else "Red" // For team challenges
         )
         remoteDatabase.child("challenges").child(challengeId).child("participants").child(userId).setValue(participant).await()
+    }
+
+    suspend fun leaveChallenge(challengeId: String) {
+        remoteDatabase.child("challenges").child(challengeId).child("participants").child(userId).removeValue().await()
     }
 
     suspend fun updateChallengeScore(challengeId: String, scoreDelta: Int) {

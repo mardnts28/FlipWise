@@ -18,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -675,23 +676,32 @@ fun SystemNotificationCard(
     isPrivate: Boolean,
     onDismiss: () -> Unit
 ) {
+    val backgroundColor = if (isPrivate) {
+        Brush.linearGradient(listOf(Color(0xFF1E293B), Color(0xFF0F172A))) // Premium Dark Gradient
+    } else {
+        Brush.linearGradient(listOf(Color(0xFF8B5CF6), Color(0xFF6D28D9))) // Vibrant Purple Gradient
+    }
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize(),
         shape = RoundedCornerShape(24.dp),
-        color = if (isPrivate) Color(0xFF0F172A) else Color(0xFF7C3AED), // Premium Dark or Brand Purple
         shadowElevation = 12.dp,
-        tonalElevation = 6.dp
+        tonalElevation = 6.dp,
+        color = Color.Transparent // We use background modifier for gradient
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .background(backgroundColor)
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .background(Color.White.copy(alpha = 0.2f), CircleShape),
+                    .background(Color.White.copy(alpha = 0.25f), CircleShape)
+                    .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -706,19 +716,20 @@ fun SystemNotificationCard(
                 Text(
                     text = title,
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = 16.sp,
-                    color = Color.White
+                    fontSize = 17.sp,
+                    color = Color.White,
+                    letterSpacing = 0.5.sp
                 )
                 Text(
                     text = message,
-                    fontSize = 13.sp,
-                    color = Color.White.copy(alpha = 0.9f),
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = 0.95f),
                     lineHeight = 18.sp
                 )
             }
             IconButton(
                 onClick = onDismiss,
-                modifier = Modifier.background(Color.White.copy(alpha = 0.1f), CircleShape)
+                modifier = Modifier.background(Color.White.copy(alpha = 0.15f), CircleShape)
             ) {
                 Icon(
                     Icons.Default.Close, 

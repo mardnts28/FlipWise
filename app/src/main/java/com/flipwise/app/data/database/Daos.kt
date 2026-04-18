@@ -44,6 +44,9 @@ interface FlashcardDao {
 
     @Query("SELECT COUNT(*) FROM flashcards WHERE deckId = :deckId")
     suspend fun getCardCountForDeck(deckId: String): Int
+
+    @Query("SELECT COUNT(*) FROM flashcards WHERE deckId = :deckId AND reviews >= 3 AND difficulty = 'easy'")
+    suspend fun getMasteredCountForDeck(deckId: String): Int
 }
 
 @Dao

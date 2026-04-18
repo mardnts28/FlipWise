@@ -98,6 +98,8 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     fun isGoogleUser(): Boolean = repository.isGoogleUser()
 
+    val currentUserId: String get() = repository.userId
+
     suspend fun updateProfile(
         displayName: String,
         username: String,
@@ -311,6 +313,17 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 logAction("CHALLENGE_JOINED", "challengeId=$challengeId")
             } catch (e: Exception) {
                 android.util.Log.e("VM_ERROR", "Join challenge failed: ${e.message}")
+            }
+        }
+    }
+
+    fun leaveGlobalChallenge(challengeId: String) {
+        viewModelScope.launch {
+            try {
+                repository.leaveChallenge(challengeId)
+                logAction("CHALLENGE_LEFT", "challengeId=$challengeId")
+            } catch (e: Exception) {
+                android.util.Log.e("VM_ERROR", "Leave challenge failed: ${e.message}")
             }
         }
     }
