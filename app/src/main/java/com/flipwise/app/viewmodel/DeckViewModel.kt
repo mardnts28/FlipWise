@@ -668,7 +668,8 @@ class DeckViewModel(application: Application) : AndroidViewModel(application) {
 
             // Save to Realtime Database instead of Firestore
             try {
-                com.google.firebase.database.FirebaseDatabase.getInstance()
+                val url = "https://flipwise-dc052-default-rtdb.asia-southeast1.firebasedatabase.app"
+                com.google.firebase.database.FirebaseDatabase.getInstance(url)
                     .getReference("audit_logs")
                     .push()
                     .setValue(mapOf(

@@ -84,36 +84,18 @@ fun HomeScreen(
         privateNotes.firstOrNull { it["read"] == false }
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFFBFBFF))
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // --- Notification Overlay ---
-        Column(modifier = Modifier.widthIn(max = 1200.dp).fillMaxWidth().padding(horizontal = dimensions.paddingLarge)) {
-            // Priority 1: Private Alerts
-            unreadPrivateNote?.let { note ->
-                SystemNotificationCard(
-                    title = note["title"] as? String ?: "Notification",
-                    message = note["message"] as? String ?: "",
-                    isPrivate = true,
-                    onDismiss = { profileViewModel.markNotificationAsRead(note["id"] as String) }
-                )
-            }
-            // Priority 2: Public Announcements
-            activeAnnouncement?.let { note ->
-                SystemNotificationCard(
-                    title = note["title"] as? String ?: "Announcement",
-                    message = note["message"] as? String ?: "",
-                    isPrivate = false,
-                    onDismiss = { dismissedAnnouncementTimestamp = note["timestamp"] as Long }
-                )
-            }
-        }
-
-        // --- Header Section ---
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // --- Header Section ---
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -467,7 +449,37 @@ fun HomeScreen(
                 }
             }
         }
-        Spacer(Modifier.height(32.dp))
+        }
+        
+        // --- Floating Notification Overlay ---
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .widthIn(max = 600.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 24.dp), // Elevated starting point
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Priority 1: Private Alerts
+            unreadPrivateNote?.let { note ->
+                SystemNotificationCard(
+                    title = note["title"] as? String ?: "Personal Alert",
+                    message = note["message"] as? String ?: "",
+                    isPrivate = true,
+                    onDismiss = { profileViewModel.markNotificationAsRead(note["id"] as String) }
+                )
+            }
+            // Priority 2: Public Announcements
+            activeAnnouncement?.let { note ->
+                val ts = note["timestamp"] as? Long ?: 0L
+                SystemNotificationCard(
+                    title = note["title"] as? String ?: "Announcement",
+                    message = note["message"] as? String ?: "",
+                    isPrivate = false,
+                    onDismiss = { dismissedAnnouncementTimestamp = ts }
+                )
+            }
+        }
     }
 
     if (showFriendNotification && pendingRequests.isNotEmpty()) {
@@ -666,14 +678,11 @@ fun SystemNotificationCard(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 16.dp, bottom = 8.dp)
             .animateContentSize(),
-        shape = RoundedCornerShape(20.dp),
-        color = if (isPrivate) Color(0xFFF0F9FF) else Color(0xFFFFF7ED),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp, 
-            (if (isPrivate) Color(0xFF0369A1) else Color(0xFFC2410C)).copy(alpha = 0.2f)
-        )
+        shape = RoundedCornerShape(24.dp),
+        color = if (isPrivate) Color(0xFF0F172A) else Color(0xFF7C3AED), // Premium Dark or Brand Purple
+        shadowElevation = 12.dp,
+        tonalElevation = 6.dp
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -681,40 +690,40 @@ fun SystemNotificationCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .background(
-                        if (isPrivate) Color(0xFF0369A1).copy(alpha = 0.1f) else Color(0xFFC2410C).copy(alpha = 0.1f),
-                        CircleShape
-                    ),
+                    .size(48.dp)
+                    .background(Color.White.copy(alpha = 0.2f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     if (isPrivate) Icons.Rounded.Shield else Icons.Rounded.Campaign,
                     contentDescription = null,
-                    tint = if (isPrivate) Color(0xFF0369A1) else Color(0xFFC2410C),
-                    modifier = Modifier.size(20.dp)
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
                 )
             }
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    color = if (isPrivate) Color(0xFF1E3A8A) else Color(0xFF7C2D12)
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 16.sp,
+                    color = Color.White
                 )
                 Text(
                     text = message,
                     fontSize = 13.sp,
-                    color = (if (isPrivate) Color(0xFF1E3A8A) else Color(0xFF7C2D12)).copy(alpha = 0.7f),
+                    color = Color.White.copy(alpha = 0.9f),
                     lineHeight = 18.sp
                 )
             }
-            IconButton(onClick = onDismiss) {
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.background(Color.White.copy(alpha = 0.1f), CircleShape)
+            ) {
                 Icon(
                     Icons.Default.Close, 
                     contentDescription = "Dismiss", 
-                    tint = if (isPrivate) Color(0xFF0369A1) else Color(0xFFC2410C),
+                    tint = Color.White,
                     modifier = Modifier.size(18.dp)
                 )
             }

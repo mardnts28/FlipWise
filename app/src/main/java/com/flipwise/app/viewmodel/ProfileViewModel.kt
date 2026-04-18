@@ -56,7 +56,8 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
             // Save to Realtime Database instead of Firestore
             try {
-                com.google.firebase.database.FirebaseDatabase.getInstance()
+                val url = "https://flipwise-dc052-default-rtdb.asia-southeast1.firebasedatabase.app"
+                com.google.firebase.database.FirebaseDatabase.getInstance(url)
                     .getReference("audit_logs")
                     .push()
                     .setValue(mapOf(
@@ -236,6 +237,25 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 Result.failure(Exception("You cannot add yourself as a friend"))
             } else {
                 repository.addFriend(targetProfile.id, targetProfile)
+                
+                // Also send a notification to the target user
+                try {
+                    val url = "https://flipwise-dc052-default-rtdb.asia-southeast1.firebasedatabase.app"
+                    val ref = com.google.firebase.database.FirebaseDatabase.getInstance(url)
+                        .getReference("users/${targetProfile.id}/notifications")
+                    ref.push().setValue(mapOf(
+                        "id" to UUID.randomUUID().toString(),
+                        "type" to "friend_request",
+                        "title" to "New Friend Request",
+                        "message" to "${userProfile.value.displayName} wants to be friends!",
+                        "senderId" to repository.userId,
+                        "timestamp" to System.currentTimeMillis(),
+                        "read" to false
+                    ))
+                } catch (e: Exception) {
+                    android.util.Log.e("FRIEND_NOTIF", "Failed to send notification: ${e.message}")
+                }
+
                 logAction("FRIEND_ADDED", "username=$trimmed")
                 Result.success(Unit)
             }

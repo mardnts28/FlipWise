@@ -207,7 +207,7 @@ fun LeaderboardScreen(
                         Column {
                             if (globalChallenges.isNotEmpty()) {
                                 Text(
-                                    "Platform Events",
+                                    "Organization Events",
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = NavyInk,

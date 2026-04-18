@@ -36,19 +36,38 @@ fun ChallengeDetailScreen(
     var challenge by remember { mutableStateOf<Challenge?>(null) }
     var participants by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
     
-    val ref = FirebaseDatabase.getInstance().reference.child("challenges").child(challengeId)
-    val isParticipant = participants.any { it["userId"] == userProfile.id }
+    val databaseUrl = "https://flipwise-dc052-default-rtdb.asia-southeast1.firebasedatabase.app"
+    val ref = FirebaseDatabase.getInstance(databaseUrl).reference.child("challenges").child(challengeId)
+    val isParticipant = remember(participants, userProfile.id) {
+        participants.any { it["userId"] == userProfile.id }
+    }
 
     DisposableEffect(challengeId) {
         val listener = ref.addValueEventListener(object : com.google.firebase.database.ValueEventListener {
             override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
-                challenge = snapshot.getValue(Challenge::class.java)
-                val parts = mutableListOf<Map<String, Any>>()
-                snapshot.child("participants").children.forEach { child ->
-                    val map = child.value as? Map<String, Any>
-                    if (map != null) parts.add(map)
+                try {
+                    val data = snapshot.value as? Map<*, *>
+                    if (data != null) {
+                        challenge = Challenge(
+                            id = snapshot.key ?: "",
+                            name = data["name"] as? String ?: "Major Event",
+                            description = data["description"] as? String ?: "Standard community event.",
+                            goal = (data["goal"] as? Number)?.toInt() ?: 100,
+                            goalType = data["goalType"] as? String ?: "Score",
+                            status = data["status"] as? String ?: "active"
+                        )
+                    }
+
+                    val parts = mutableListOf<Map<String, Any>>()
+                    snapshot.child("participants").children.forEach { child ->
+                        val map = child.value as? Map<String, Any>
+                        if (map != null) parts.add(map)
+                    }
+                    // Safe numeric sorting
+                    participants = parts.sortedByDescending { (it["score"] as? Number)?.toLong() ?: 0L }
+                } catch (e: Exception) {
+                    android.util.Log.e("CHALLENGE_DETAIL", "Error parsing data: ${e.message}")
                 }
-                participants = parts.sortedByDescending { it["score"] as? Long ?: 0L }
             }
             override fun onCancelled(error: com.google.firebase.database.DatabaseError) {}
         })
@@ -59,7 +78,7 @@ fun ChallengeDetailScreen(
         containerColor = GhostWhite,
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(challenge?.name ?: "Challenge Detail", fontWeight = FontWeight.ExtraBold) },
+                title = { Text(challenge?.name ?: "Event Details", fontWeight = FontWeight.ExtraBold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -88,7 +107,7 @@ fun ChallengeDetailScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(28.dp),
                     color = Color.White,
-                    shadowElevation = 2.dp
+                    shadowElevation = 8.dp // Increased shadow for premium feel
                 ) {
                     Column(modifier = Modifier.padding(24.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -97,7 +116,7 @@ fun ChallengeDetailScreen(
                                 color = GrapePop.copy(alpha = 0.1f)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.EmojiEvents,
+                                    imageVector = Icons.Rounded.Groups,
                                     contentDescription = null,
                                     tint = GrapePop,
                                     modifier = Modifier.padding(8.dp).size(20.dp)
@@ -113,15 +132,14 @@ fun ChallengeDetailScreen(
                         Spacer(Modifier.height(16.dp))
                         Text(challenge?.description ?: "", color = Color.Gray, fontSize = 14.sp)
                         
-                        Spacer(Modifier.height(24.dp))
-                        
                         // Tracking real-time total (Global Progress)
-                        val totalCards = participants.sumOf { it["score"] as? Long ?: 0L }
+                        val totalCards = participants.sumOf { (it["score"] as? Number)?.toLong() ?: 0L }
                         val goal = challenge?.goal?.toLong()?.coerceAtLeast(1L) ?: 1L
                         val progress = (totalCards.toFloat() / goal.toFloat()).coerceIn(0f, 1f)
                         
+                        Spacer(Modifier.height(24.dp))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Event Progress", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("Organization Progress", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             Text("${totalCards.toLocaleString()} / ${goal.toLocaleString()}", color = GrapePop, fontWeight = FontWeight.Bold)
                         }
                         Spacer(Modifier.height(8.dp))
@@ -129,7 +147,7 @@ fun ChallengeDetailScreen(
                             progress = { progress },
                             modifier = Modifier.fillMaxWidth().height(12.dp).clip(CircleShape),
                             color = GrapePop,
-                            trackColor = Color(0xFFF1F5F9) // ghost white / gray
+                            trackColor = Color(0xFFF1F5F9)
                         )
                     }
                 }
@@ -142,9 +160,10 @@ fun ChallengeDetailScreen(
                         onClick = { profileViewModel.joinGlobalChallenge(challengeId) },
                         modifier = Modifier.fillMaxWidth().height(64.dp),
                         shape = RoundedCornerShape(20.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = GrapePop)
+                        colors = ButtonDefaults.buttonColors(containerColor = GrapePop),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                     ) {
-                        Text("Join Global Event", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text("Join Organization", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
                 } else {
                     Surface(
@@ -154,16 +173,16 @@ fun ChallengeDetailScreen(
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF10B981).copy(alpha = 0.2f))
                     ) {
                         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                            Icon(androidx.compose.material.icons.Icons.Rounded.CheckCircle, contentDescription = null, tint = Color(0xFF10B981))
+                            Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = Color(0xFF10B981))
                             Spacer(Modifier.width(8.dp))
-                            Text("You are participating in this event!", color = Color(0xFF10B981), fontWeight = FontWeight.Bold)
+                            Text("Successfully participating!", color = Color(0xFF10B981), fontWeight = FontWeight.Bold)
                         }
                     }
                 }
 
                 Spacer(Modifier.height(32.dp))
                 
-                Text("Top Participants", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = NavyInk)
+                Text("Contributors", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = NavyInk)
                 Spacer(Modifier.height(16.dp))
                 
                 LazyColumn(
